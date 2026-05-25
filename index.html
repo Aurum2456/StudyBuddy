@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>StudyBuddy</title>
+    <title>StudyBuddy Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-base: #0f0f11;
@@ -24,49 +24,112 @@
             --warning: #f59e0b; 
             --missed: #71717a;  
             --time-bg: rgba(59, 130, 246, 0.15);
+            --purple: #a855f7;
+            --cyan: #06b6d4;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
 
         body { background-color: var(--bg-base); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; flex-direction: row; }
 
+        /* Toast Notification System */
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast {
+            background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: 12px;
+            padding: 16px 20px; min-width: 300px; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            display: flex; align-items: center; gap: 12px; animation: slideIn 0.3s ease;
+            backdrop-filter: blur(10px); background: rgba(39, 39, 42, 0.95);
+        }
+        .toast.success { border-left: 3px solid var(--accent); }
+        .toast.error { border-left: 3px solid var(--danger); }
+        .toast.warning { border-left: 3px solid var(--warning); }
+        .toast.info { border-left: 3px solid var(--primary); }
+        @keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(400px); opacity: 0; } }
+        .toast.hiding { animation: slideOut 0.3s ease forwards; }
+
         /* Navigation */
         nav {
             width: 250px; background-color: var(--bg-surface); border-right: 1px solid var(--border-color);
             padding: 30px 20px; display: flex; flex-direction: column; gap: 12px; z-index: 100;
         }
-        .logo { font-size: 1.5rem; font-weight: 700; text-align: center; margin-bottom: 35px; letter-spacing: 1px; color: var(--text-main); }
-        .logo span { color: var(--primary); }
+        .logo { font-size: 1.5rem; font-weight: 800; text-align: center; margin-bottom: 35px; letter-spacing: 1px; color: var(--text-main); }
+        .logo span { 
+            background: linear-gradient(135deg, var(--primary), var(--purple));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
         .nav-btn {
             background: transparent; color: var(--text-muted); border: 1px solid transparent; padding: 12px 16px;
             text-align: left; border-radius: 8px; cursor: pointer; font-size: 0.95rem; font-weight: 500; transition: 0.2s;
             display: flex; align-items: center; justify-content: flex-start;
         }
         .nav-btn:hover { background: var(--bg-elevated); color: var(--text-main); }
-        .nav-btn.active { background: var(--bg-elevated); color: var(--text-main); border-left: 3px solid var(--primary); border-radius: 0 8px 8px 0; }
+        .nav-btn.active { 
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(168, 85, 247, 0.1));
+            color: var(--text-main); border-left: 3px solid var(--primary); border-radius: 0 8px 8px 0; 
+        }
         .reset-btn { margin-top: auto; color: var(--danger); }
 
         main { flex: 1; padding: 40px; overflow-y: auto; scroll-behavior: smooth; }
-        .view-section { display: none; max-width: 900px; margin: 0 auto; animation: fadeIn 0.3s ease; }
+        .view-section { display: none; max-width: 1000px; margin: 0 auto; animation: fadeIn 0.3s ease; }
         .view-section.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Cards & Typography */
-        .card { background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 30px; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-        h2 { font-size: 1.3rem; margin-bottom: 25px; font-weight: 600; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; }
+        /* Enhanced Cards */
+        .card { 
+            background: linear-gradient(135deg, rgba(26, 26, 28, 0.8), rgba(39, 39, 42, 0.6));
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color); border-radius: 16px; padding: 30px; margin-bottom: 25px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 15px 50px rgba(0,0,0,0.5); }
+        
+        h2 { 
+            font-size: 1.4rem; margin-bottom: 25px; font-weight: 700; 
+            border-bottom: 1px solid var(--border-color); padding-bottom: 12px; 
+        }
         .flex-between { display: flex; justify-content: space-between; align-items: center; }
-        .btn-primary { background: var(--primary); color: white; border: none; padding: 14px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; width: 100%; transition: 0.2s; }
-        .btn-primary:hover { opacity: 0.9; }
+        .btn-primary { 
+            background: linear-gradient(135deg, var(--primary), var(--purple));
+            color: white; border: none; padding: 14px 24px; border-radius: 10px; cursor: pointer; 
+            font-weight: 600; font-size: 1rem; width: 100%; transition: 0.2s;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4); }
         .btn-primary:active { transform: scale(0.98); }
+
+        /* Streak Counter Badge */
+        .streak-badge {
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            color: white; padding: 8px 16px; border-radius: 20px;
+            font-weight: 700; font-size: 0.9rem; display: inline-flex;
+            align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        }
 
         /* Daily Tracker */
         .days-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 25px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
         .days-row::-webkit-scrollbar { display: none; }
-        .day-box { flex: 1; min-width: 50px; background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 4px; text-align: center; cursor: pointer; transition: 0.2s; }
-        .day-box.active { border-color: var(--primary); background: rgba(59, 130, 246, 0.1); }
-        .day-box.has-tasks::after { content: ''; display: block; width: 6px; height: 6px; background: var(--primary); border-radius: 50%; margin: 6px auto 0; }
-        .task-item { display: flex; align-items: flex-start; background: var(--bg-elevated); padding: 16px; border-radius: 8px; margin-bottom: 12px; border: 1px solid var(--border-color); cursor: pointer; transition: 0.2s; }
-        .task-item:hover { border-color: var(--text-muted); }
+        .day-box { 
+            flex: 1; min-width: 50px; 
+            background: var(--bg-elevated); border: 2px solid var(--border-color); border-radius: 12px; 
+            padding: 12px 4px; text-align: center; cursor: pointer; transition: 0.2s; 
+        }
+        .day-box:hover { transform: translateY(-2px); border-color: var(--primary); }
+        .day-box.active { 
+            border-color: var(--primary); 
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(168, 85, 247, 0.1));
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        }
+        .day-box.has-tasks::after { content: ''; display: block; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; margin: 6px auto 0; }
+        
+        .task-item { 
+            display: flex; align-items: flex-start; background: var(--bg-elevated); 
+            padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid var(--border-color); 
+            cursor: pointer; transition: 0.2s; 
+        }
+        .task-item:hover { border-color: var(--primary); transform: translateX(4px); }
         .task-checkbox { width: 22px; height: 22px; margin-right: 16px; margin-top: 2px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
         .task-text { flex: 1; font-size: 0.95rem; line-height: 1.5; }
         .task-item.done { opacity: 0.5; border-color: var(--border-color); }
@@ -74,37 +137,64 @@
         .task-time { color: var(--primary); font-size: 0.8rem; font-weight: 700; background: var(--time-bg); padding: 4px 8px; border-radius: 6px; margin-right: 8px; display: inline-block; margin-bottom: 6px; letter-spacing: 0.5px; }
         .task-item.done .task-time { color: var(--text-muted); background: transparent; border: 1px solid var(--border-color); }
 
-        /* Form Styling Overhaul */
+        /* Form Styling */
         .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 8px; }
-        .form-group input { width: 100%; background: var(--bg-elevated); border: 1px solid var(--border-color); color: var(--text-main); padding: 12px 15px; border-radius: 8px; font-size: 1rem; outline: none; transition: 0.2s; }
-        .form-group input:focus { border-color: var(--primary); }
+        .form-group label { display: block; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 8px; font-weight: 500; }
+        .form-group input { 
+            width: 100%; background: var(--bg-elevated); border: 2px solid var(--border-color); 
+            color: var(--text-main); padding: 12px 15px; border-radius: 10px; font-size: 1rem; 
+            outline: none; transition: 0.2s; 
+        }
+        .form-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
 
         .omr-form-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color); gap: 15px; }
         .omr-form-row label { color: var(--text-muted); font-size: 0.95rem; flex: 1; }
-        .omr-form-row input { background: var(--bg-elevated); border: 1px solid var(--border-color); color: var(--text-main); text-align: center; font-size: 1rem; padding: 8px 12px; border-radius: 6px; outline: none; width: 90px; transition: 0.2s; }
+        .omr-form-row input { background: var(--bg-elevated); border: 2px solid var(--border-color); color: var(--text-main); text-align: center; font-size: 1rem; padding: 8px 12px; border-radius: 8px; outline: none; width: 90px; transition: 0.2s; }
         .omr-form-row input:focus { border-color: var(--primary); }
 
         /* Dynamic Subject Rows */
         .subject-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
-        .subject-row .sub-name { flex: 1; background: var(--bg-elevated); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px 12px; border-radius: 6px; font-size: 0.95rem; font-weight: 500; outline: none; }
-        .subject-row .sub-qs { width: 80px; text-align: center; background: var(--bg-elevated); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 6px; font-size: 0.95rem; outline: none; }
-        .subject-row .sub-name:focus, .subject-row .sub-qs:focus { border-color: var(--primary); }
-        .subject-row .delete-btn { color: var(--danger); background: transparent; border: none; font-size: 1.5rem; cursor: pointer; padding: 0 5px; line-height: 1; width: 30px; text-align: center; }
+        .subject-row .sub-name { flex: 1; background: var(--bg-elevated); border: 2px solid var(--border-color); color: var(--text-main); padding: 10px 12px; border-radius: 8px; font-size: 0.95rem; font-weight: 500; outline: none; transition: 0.2s; }
+        .subject-row .sub-qs { width: 80px; text-align: center; background: var(--bg-elevated); border: 2px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 8px; font-size: 0.95rem; outline: none; transition: 0.2s; }
+        .subject-row .sub-name:focus, .subject-row .sub-qs:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        .subject-row .delete-btn { color: var(--danger); background: transparent; border: none; font-size: 1.5rem; cursor: pointer; padding: 0 5px; line-height: 1; width: 30px; text-align: center; transition: 0.2s; }
+        .subject-row .delete-btn:hover { transform: scale(1.2); }
 
-        /* Active OMR Sheet */
+        /* Active OMR Sheet with Filters */
         .sticky-header { position: sticky; top: -40px; background: var(--bg-base); padding: 20px 0 10px 0; z-index: 10; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; }
+        
+        .filter-pills { display: flex; gap: 8px; margin: 15px 0; flex-wrap: wrap; }
+        .filter-pill {
+            padding: 8px 16px; background: var(--bg-elevated); border: 2px solid var(--border-color);
+            color: var(--text-muted); border-radius: 20px; cursor: pointer; font-size: 0.85rem;
+            font-weight: 600; transition: 0.2s; white-space: nowrap;
+        }
+        .filter-pill:hover { border-color: var(--primary); }
+        .filter-pill.active { background: var(--primary); color: white; border-color: var(--primary); }
+        
         .section-tabs { display: flex; gap: 10px; margin-top: 15px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; }
         .section-tabs::-webkit-scrollbar { display: none; }
-        .sec-tab { flex: 1; min-width: 100px; padding: 10px 12px; background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-muted); border-radius: 8px; cursor: pointer; text-align: center; white-space: nowrap; font-size: 0.95rem; font-weight: 500; transition: 0.2s; }
-        .sec-tab.active { background: rgba(59, 130, 246, 0.1); border-color: var(--primary); color: var(--primary); }
+        .sec-tab { 
+            flex: 1; min-width: 100px; padding: 10px 12px; background: var(--bg-surface); 
+            border: 2px solid var(--border-color); color: var(--text-muted); border-radius: 10px; 
+            cursor: pointer; text-align: center; white-space: nowrap; font-size: 0.95rem; 
+            font-weight: 600; transition: 0.2s; 
+        }
+        .sec-tab:hover { border-color: var(--primary); transform: translateY(-2px); }
+        .sec-tab.active { 
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(168, 85, 247, 0.1)); 
+            border-color: var(--primary); color: var(--primary); 
+        }
         
         .omr-sec-container { display: none; }
         .omr-sec-container.active { display: block; animation: fadeIn 0.2s; }
         
-        .omr-q-row { display: flex; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--bg-elevated); }
+        .omr-q-row { display: flex; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--bg-elevated); transition: 0.2s; }
+        .omr-q-row:hover { background: rgba(59, 130, 246, 0.05); }
+        .omr-q-row.hidden { display: none; }
         .q-num { width: 45px; font-size: 1rem; font-weight: 600; }
         .q-icon { margin-right: 20px; color: var(--text-muted); font-size: 1.3rem; cursor: pointer; transition: 0.2s; }
+        .q-icon:hover { transform: scale(1.2); }
         .q-icon.review-active { color: var(--danger); }
         
         .bubbles-container { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -113,15 +203,59 @@
             display: flex; align-items: center; justify-content: center; background: var(--bg-elevated);
             color: var(--text-main); font-weight: 600; cursor: pointer; font-size: 0.95rem; transition: 0.1s;
         }
-        .bubble.selected { background-color: var(--primary); border-color: var(--primary); color: white; }
+        .bubble:hover { transform: scale(1.1); border-color: var(--primary); }
+        .bubble.selected { 
+            background: linear-gradient(135deg, var(--primary), var(--purple));
+            border-color: var(--primary); color: white; 
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
 
-        /* Report & Analytics */
-        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; }
-        .kpi-box { background: var(--bg-surface); border: 1px solid var(--border-color); padding: 20px; border-radius: 12px; text-align: center; }
-        .kpi-val { font-size: 1.6rem; font-weight: bold; margin-bottom: 6px; }
-        .kpi-label { color: var(--text-muted); font-size: 0.85rem; }
+        /* Enhanced Analytics Cards */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
+        .kpi-box { 
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(168, 85, 247, 0.05));
+            border: 1px solid var(--border-color); padding: 20px; border-radius: 12px; 
+            text-align: center; transition: 0.2s; cursor: pointer;
+        }
+        .kpi-box:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(59, 130, 246, 0.2); }
+        .kpi-val { font-size: 2rem; font-weight: 800; margin-bottom: 6px; }
+        .kpi-label { color: var(--text-muted); font-size: 0.85rem; font-weight: 500; }
 
-        .report-card { background-color: #ffffff; color: #000000; max-width: 700px; margin: 0 auto; border-radius: 12px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        /* Subject Performance Cards */
+        .subject-perf-card {
+            background: var(--bg-elevated); border: 1px solid var(--border-color);
+            border-radius: 12px; padding: 20px; margin-bottom: 15px; transition: 0.2s;
+        }
+        .subject-perf-card:hover { border-color: var(--primary); transform: translateX(4px); }
+        .perf-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .perf-bar { height: 8px; background: var(--bg-base); border-radius: 10px; overflow: hidden; margin-top: 8px; }
+        .perf-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--primary)); transition: width 0.3s; }
+
+        /* Comparison View */
+        .comparison-card {
+            display: grid; grid-template-columns: 1fr auto 1fr; gap: 20px;
+            align-items: center; padding: 20px; background: var(--bg-elevated);
+            border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 15px;
+        }
+        .comp-side { text-align: center; }
+        .comp-arrow { font-size: 2rem; color: var(--text-muted); }
+        .comp-value { font-size: 1.8rem; font-weight: 700; }
+        .comp-label { color: var(--text-muted); font-size: 0.85rem; margin-top: 4px; }
+        .comp-delta { font-size: 0.9rem; font-weight: 600; margin-top: 8px; }
+        .comp-delta.positive { color: var(--accent); }
+        .comp-delta.negative { color: var(--danger); }
+
+        /* Insights Cards */
+        .insight-card {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 182, 212, 0.1));
+            border: 1px solid var(--border-color); border-left: 4px solid var(--accent);
+            border-radius: 12px; padding: 20px; margin-bottom: 15px;
+        }
+        .insight-title { font-weight: 700; font-size: 1.05rem; margin-bottom: 8px; color: var(--accent); }
+        .insight-desc { color: var(--text-muted); line-height: 1.6; }
+
+        /* Report Cards */
+        .report-card { background-color: #ffffff; color: #000000; max-width: 750px; margin: 0 auto; border-radius: 16px; padding: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
         .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 0.95rem; margin-bottom: 25px; }
         .report-grid div { display: flex; justify-content: space-between; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; }
         
@@ -136,13 +270,31 @@
         .report-q-num { display: inline-block; width: 30px; font-weight: bold; font-size: 0.95rem; }
         .report-q-num.review { color: var(--danger); }
 
-        /* MOBILE RESPONSIVE MEDIA QUERIES */
+        /* Loading Spinner */
+        .loading-spinner {
+            display: inline-block; width: 20px; height: 20px;
+            border: 3px solid var(--border-color);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center; padding: 60px 20px;
+            color: var(--text-muted);
+        }
+        .empty-state-icon { font-size: 4rem; margin-bottom: 20px; opacity: 0.5; }
+        .empty-state-text { font-size: 1.1rem; font-weight: 600; margin-bottom: 10px; }
+        .empty-state-desc { font-size: 0.9rem; }
+
+        /* MOBILE RESPONSIVE */
         @media (max-width: 768px) {
             body { flex-direction: column; }
             nav { 
                 width: 100%; height: 75px; flex-direction: row; padding: 5px; border-right: none; 
                 border-top: 1px solid var(--border-color); position: fixed; bottom: 0; 
-                background: rgba(26, 26, 28, 0.95); backdrop-filter: blur(10px);
+                background: rgba(26, 26, 28, 0.98); backdrop-filter: blur(20px);
                 justify-content: space-around; align-items: center; 
             }
             .logo { display: none; }
@@ -155,68 +307,120 @@
             .sticky-header { top: -20px; }
             
             .kpi-grid { grid-template-columns: 1fr 1fr; }
-            .kpi-grid .kpi-box:last-child { grid-column: span 2; } 
-            
-            .omr-form-row label { font-size: 0.9rem; }
-            .subject-row { gap: 10px; }
+            .comparison-card { grid-template-columns: 1fr; }
+            .comp-arrow { transform: rotate(90deg); margin: 10px 0; }
             
             .report-card { padding: 20px; }
             .report-grid { grid-template-columns: 1fr; gap: 12px; }
-            #report-omr-breakdown { grid-template-columns: 1fr 1fr; gap: 10px; } 
+            #report-omr-breakdown { grid-template-columns: 1fr 1fr; gap: 10px; }
+            
+            .toast-container { top: 10px; right: 10px; left: 10px; }
+            .toast { min-width: auto; }
         }
     </style>
 </head>
 <body>
+    <div class="toast-container" id="toast-container"></div>
 
     <nav>
         <div class="logo">Study<span>Buddy</span></div>
-        <button class="nav-btn active" onclick="switchTab('tracker-view')">Tracker</button>
-        <button class="nav-btn" onclick="switchTab('analytics-home')">Analysis</button>
-        <button class="nav-btn" onclick="switchTab('create-exam-view')" style="color: var(--primary);">+ Attempt Exam</button>
-        <button class="nav-btn reset-btn" onclick="resetApp()">Reset</button>
+        <button class="nav-btn active" onclick="switchTab('tracker-view')">📅 Tracker</button>
+        <button class="nav-btn" onclick="switchTab('analytics-home')">📊 Analytics</button>
+        <button class="nav-btn" onclick="switchTab('insights-view')">💡 Insights</button>
+        <button class="nav-btn" onclick="switchTab('comparison-view')">📈 Compare</button>
+        <button class="nav-btn" onclick="switchTab('create-exam-view')" style="color: var(--primary);">✏️ New Exam</button>
+        <button class="nav-btn reset-btn" onclick="confirmReset()">🔄 Reset</button>
     </nav>
 
     <main>
+        <!-- TRACKER VIEW -->
         <section id="tracker-view" class="view-section active">
             <div class="card">
-                <div class="flex-between" style="margin-bottom: 20px;">
-                    <button onclick="changeWeek(-1)" style="background:var(--bg-elevated); color:white; border:1px solid var(--border-color); cursor:pointer; padding:8px 12px; border-radius:6px;">&#8592; Prev</button>
+                <div class="flex-between" style="margin-bottom: 15px;">
+                    <h2 style="margin: 0; border: none;">Daily Planner</h2>
+                    <div class="streak-badge" id="streak-display">🔥 0 Day Streak</div>
+                </div>
+                <div class="flex-between" style="margin-bottom: 20px; margin-top: 20px;">
+                    <button onclick="changeWeek(-1)" style="background:var(--bg-elevated); color:white; border:2px solid var(--border-color); cursor:pointer; padding:10px 16px; border-radius:10px; font-weight:600; transition:0.2s;">← Prev</button>
                     <h3 id="month-year-label" style="font-size: 1.1rem; font-weight: 600;">Month Year</h3>
-                    <button onclick="changeWeek(1)" style="background:var(--bg-elevated); color:white; border:1px solid var(--border-color); cursor:pointer; padding:8px 12px; border-radius:6px;">Next &#8594;</button>
+                    <button onclick="changeWeek(1)" style="background:var(--bg-elevated); color:white; border:2px solid var(--border-color); cursor:pointer; padding:10px 16px; border-radius:10px; font-weight:600; transition:0.2s;">Next →</button>
                 </div>
                 <div class="days-row" id="calendar-days"></div>
             </div>
-            <div class="card" style="padding-top: 20px;">
+            <div class="card">
                 <h2 id="selected-date-title" style="border:none; margin-bottom: 15px;">Tasks for Today</h2>
                 <div id="task-list"></div>
             </div>
         </section>
 
+        <!-- ANALYTICS HOME -->
         <section id="analytics-home" class="view-section">
             <div class="card">
-                <h2>Accuracy Trend</h2>
-                <div style="height: 250px; position: relative;">
+                <h2>📈 Accuracy Trend</h2>
+                <div style="height: 280px; position: relative;">
                     <canvas id="mainTrendChart"></canvas>
                 </div>
             </div>
 
             <div class="card">
-                <h2>Recent Exams</h2>
+                <h2>📚 Subject-wise Performance</h2>
+                <div id="subject-performance"></div>
+            </div>
+
+            <div class="card">
+                <h2>📝 Recent Exams</h2>
                 <div id="recent-exams-list"></div>
                 <button class="btn-primary" style="margin-top: 20px;" onclick="switchTab('create-exam-view')">START NEW MOCK</button>
             </div>
         </section>
 
+        <!-- INSIGHTS VIEW -->
+        <section id="insights-view" class="view-section">
+            <div class="card">
+                <h2>💡 Smart Insights</h2>
+                <div id="insights-container"></div>
+            </div>
+
+            <div class="card">
+                <h2>🎯 Weak Areas to Focus</h2>
+                <div id="weak-areas"></div>
+            </div>
+
+            <div class="card">
+                <h2>⚡ Performance Patterns</h2>
+                <div style="height: 300px; position: relative;">
+                    <canvas id="patternChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- COMPARISON VIEW -->
+        <section id="comparison-view" class="view-section">
+            <div class="card">
+                <h2>📈 Progress Comparison</h2>
+                <p style="color: var(--text-muted); margin-bottom: 20px;">Compare your latest attempt with your previous performance</p>
+                <div id="comparison-container"></div>
+            </div>
+
+            <div class="card">
+                <h2>🎯 Improvement Tracker</h2>
+                <div style="height: 280px; position: relative;">
+                    <canvas id="improvementChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- CREATE EXAM VIEW -->
         <section id="create-exam-view" class="view-section">
             <div class="card" style="max-width: 650px; margin: 0 auto;">
-                <h2 style="text-align: center; border: none; font-size: 1.5rem; margin-bottom: 30px;">Create Custom Exam</h2>
+                <h2 style="text-align: center; border: none; font-size: 1.5rem; margin-bottom: 30px;">✏️ Create Custom Exam</h2>
                 
                 <div class="form-group">
                     <label>Exam Title *</label>
-                    <input type="text" id="setup-title" placeholder="e.g., IBPS PO Prelims" required>
+                    <input type="text" id="setup-title" placeholder="e.g., IBPS PO Prelims Mock #12" required>
                 </div>
                 
-                <h3 style="margin-top: 35px; margin-bottom: 15px; font-size: 1.05rem; color: var(--primary); font-weight: 600;">Section Breakdown</h3>
+                <h3 style="margin-top: 35px; margin-bottom: 15px; font-size: 1.05rem; color: var(--primary); font-weight: 600;">📚 Section Breakdown</h3>
                 <div id="dynamic-subjects-container">
                     <div class="subject-row">
                         <input type="text" class="sub-name" value="English" placeholder="Subject Name">
@@ -235,43 +439,54 @@
                     </div>
                 </div>
                 
-                <button class="btn-primary" style="background:var(--bg-elevated); color:var(--primary); border: 1px solid var(--border-color); margin-top:15px; width:auto; font-size:0.9rem; padding:10px 20px;" onclick="addSubjectRow()">+ Add Subject</button>
+                <button class="btn-primary" style="background:var(--bg-elevated); color:var(--primary); border: 2px solid var(--border-color); margin-top:15px; width:auto; font-size:0.9rem; padding:10px 20px; box-shadow: none;" onclick="addSubjectRow()">+ Add Subject</button>
 
-                <h3 style="margin-top: 40px; margin-bottom: 10px; font-size: 1.05rem; color: var(--primary); font-weight: 600;">Marking Scheme</h3>
+                <h3 style="margin-top: 40px; margin-bottom: 10px; font-size: 1.05rem; color: var(--primary); font-weight: 600;">⚙️ Marking Scheme</h3>
                 <div class="omr-form-row"><label>Options per Question:</label><input type="number" id="setup-opts" value="5" max="5" inputmode="numeric"></div>
                 <div class="omr-form-row"><label>Marks for Correct (+):</label><input type="number" id="setup-correct" value="1" inputmode="decimal"></div>
                 <div class="omr-form-row"><label>Marks for Wrong (-):</label><input type="number" id="setup-wrong" step="0.25" value="0.25" inputmode="decimal"></div>
                 <div class="omr-form-row"><label>Total Duration (Mins):</label><input type="number" id="setup-time" value="60" inputmode="numeric"></div>
 
-                <button class="btn-primary" style="margin-top: 35px; font-size: 1.1rem; padding: 16px;" onclick="startExam()">START EXAM</button>
+                <button class="btn-primary" style="margin-top: 35px; font-size: 1.1rem; padding: 16px;" onclick="startExam()">🚀 START EXAM</button>
             </div>
         </section>
 
+        <!-- ACTIVE EXAM VIEW -->
         <section id="active-exam-view" class="view-section">
             <div class="sticky-header">
                 <div class="flex-between">
-                    <div id="exam-timer" style="font-size: 1.5rem; font-weight: bold; color: var(--warning); letter-spacing: 1px;">60:00</div>
+                    <div id="exam-timer" style="font-size: 1.5rem; font-weight: 800; color: var(--warning); letter-spacing: 1px;">60:00</div>
                     <div style="font-size: 1rem; color: var(--text-muted); font-weight: 500;"><span id="attempted-count">0</span> / <span id="total-qs-count">100</span></div>
-                    <button class="btn-primary" style="width: auto; padding: 10px 20px; font-size: 0.95rem; background: var(--accent);" onclick="submitExam()">SUBMIT</button>
+                    <button class="btn-primary" style="width: auto; padding: 10px 20px; font-size: 0.95rem; background: var(--accent); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);" onclick="confirmSubmit()">✓ SUBMIT</button>
                 </div>
+                
+                <div class="filter-pills">
+                    <div class="filter-pill active" data-filter="all" onclick="filterQuestions('all')">All Questions</div>
+                    <div class="filter-pill" data-filter="attempted" onclick="filterQuestions('attempted')">Attempted</div>
+                    <div class="filter-pill" data-filter="unattempted" onclick="filterQuestions('unattempted')">Not Attempted</div>
+                    <div class="filter-pill" data-filter="review" onclick="filterQuestions('review')">Marked for Review</div>
+                </div>
+                
                 <div class="section-tabs" id="exam-section-tabs"></div>
             </div>
             <div id="omr-sheet-container" style="padding-bottom: 30px;"></div>
         </section>
 
+        <!-- ANSWER KEY VIEW -->
         <section id="answer-key-view" class="view-section">
             <div class="sticky-header flex-between">
-                <h2 style="font-size: 1.2rem; margin:0; border:none;">Answer Key</h2>
-                <button class="btn-primary" style="width: auto; padding: 10px 20px; background: var(--accent); color: white; font-size: 0.95rem;" onclick="evaluateExam()">SAVE & SCORE</button>
+                <h2 style="font-size: 1.2rem; margin:0; border:none;">🔑 Answer Key</h2>
+                <button class="btn-primary" style="width: auto; padding: 10px 20px; background: var(--accent); color: white; font-size: 0.95rem;" onclick="evaluateExam()">💾 SAVE & SCORE</button>
             </div>
             <p style="color: var(--warning); margin-bottom: 20px; font-size: 0.95rem;">Enter the correct options from your solution PDF below.</p>
             <div class="section-tabs" id="ans-section-tabs"></div>
             <div id="answer-key-container" style="padding-bottom: 30px;"></div>
         </section>
 
+        <!-- REPORT VIEW -->
         <section id="report-view" class="view-section">
             <div class="report-card">
-                <h2 id="report-title" style="text-align: center; border: none; font-size: 1.3rem; font-weight: 700; text-transform: uppercase; margin-bottom:15px; color:#111;">EXAM REPORT</h2>
+                <h2 id="report-title" style="text-align: center; border: none; font-size: 1.3rem; font-weight: 700; text-transform: uppercase; margin-bottom:15px; color:#111;">📊 EXAM REPORT</h2>
                 <hr style="border-top: 1px solid #eaeaea; margin-bottom: 25px;">
                 
                 <div class="report-grid">
@@ -289,8 +504,7 @@
                     <span style="background:#fff; padding:0 15px;">OMR - Section Breakdown</span>
                 </div>
 
-                <div id="report-omr-breakdown" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin-bottom: 35px;">
-                    </div>
+                <div id="report-omr-breakdown" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin-bottom: 35px;"></div>
 
                 <div style="font-size: 0.9rem; color: #444; margin-top: 30px; border-top: 1px solid #eaeaea; padding-top: 20px; background: #fafafa; padding: 15px; border-radius: 8px;">
                     <strong style="color:#222;">How to cross check answers?</strong>
@@ -306,20 +520,21 @@
             </div>
         </section>
 
+        <!-- RESULT VIEW -->
         <section id="result-view" class="view-section">
             <div class="card" style="display: flex; flex-direction: column; align-items: center; padding: 40px 20px;">
-                <div style="width: 220px; height: 220px; position: relative;">
+                <div style="width: 240px; height: 240px; position: relative;">
                     <canvas id="donutChart"></canvas>
                     <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
-                        <span id="donut-center-score" style="font-size: 2rem; font-weight: bold; color: var(--text-main);">0</span><br>
-                        <span style="font-size: 0.85rem; color: var(--text-muted);">Total Score</span>
+                        <span id="donut-center-score" style="font-size: 2.5rem; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">0</span><br>
+                        <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Total Score</span>
                     </div>
                 </div>
             </div>
 
             <div class="kpi-grid">
                 <div class="kpi-box">
-                    <div class="kpi-val" id="res-percent">0%</div>
+                    <div class="kpi-val" id="res-percent" style="background: linear-gradient(135deg, var(--accent), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">0%</div>
                     <div class="kpi-label">Overall %</div>
                 </div>
                 <div class="kpi-box">
@@ -333,22 +548,43 @@
             </div>
             
             <div class="card" style="margin-top: 25px;">
-                <h3 style="margin-bottom: 15px; border:none; padding:0;">Time Spent Per Section</h3>
-                <div id="res-section-times" style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
-                    </div>
+                <h2>⏱️ Time Spent Per Section</h2>
+                <div id="res-section-times"></div>
+            </div>
+
+            <div class="card">
+                <h2>📊 Section-wise Performance</h2>
+                <div id="res-section-breakdown"></div>
             </div>
         </section>
-
     </main>
 
     <script>
         // ==========================================
-        // ROBUST FIREBASE & LOCAL STATE INIT
+        // TOAST NOTIFICATION SYSTEM
         // ==========================================
-        let appData = { tasks: {}, mocks: [] };
-        const LOCAL_KEY = "studybuddy_local_backup";
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            const icon = type === 'success' ? '✓' : type === 'error' ? '✗' : type === 'warning' ? '⚠' : 'ℹ';
+            toast.innerHTML = `<span style="font-size:1.3rem;">${icon}</span><span style="flex:1;">${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('hiding');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ==========================================
+        // FIREBASE & LOCAL STATE INIT
+        // ==========================================
+        let appData = { tasks: {}, mocks: [], lastStudyDate: null };
+        const LOCAL_KEY = "studybuddy_pro_backup";
         
-        // MOVED THESE TO THE TOP TO PREVENT CRASHES
         const todayReal = new Date();
         const todayStr = todayReal.toISOString().split('T')[0];
 
@@ -361,13 +597,11 @@
             appId: "1:1086444958128:web:a636bf2dbb4f0804872675" 
         };
 
-        // Initialize Firebase safely
         try {
             firebase.initializeApp(firebaseConfig);
             const db = firebase.firestore();
             const myDocRef = db.collection('bankquest_users').doc('my_personal_data');
 
-            // Listen for real-time changes
             myDocRef.onSnapshot((doc) => {
                 if (doc.exists) {
                     appData = doc.data();
@@ -378,6 +612,8 @@
                 }
                 renderTracker();
                 renderAnalyticsHome();
+                renderInsights();
+                renderComparison();
             }, (error) => {
                 console.error("Firebase Sync Blocked:", error);
                 fallbackToLocal();
@@ -388,10 +624,12 @@
         }
 
         function fallbackToLocal() {
-            appData = JSON.parse(localStorage.getItem(LOCAL_KEY)) || { tasks: {}, mocks: [] };
+            appData = JSON.parse(localStorage.getItem(LOCAL_KEY)) || { tasks: {}, mocks: [], lastStudyDate: null };
             if (Object.keys(appData.tasks).length === 0) generate60DayPlan();
             renderTracker();
             renderAnalyticsHome();
+            renderInsights();
+            renderComparison();
         }
 
         function saveData() {
@@ -404,7 +642,66 @@
         }
 
         // ==========================================
-        // 60-DAY PROGRESSIVE PLAN GENERATOR 
+        // STUDY STREAK CALCULATOR
+        // ==========================================
+        function calculateStreak() {
+            if (!appData.lastStudyDate) return 0;
+            
+            const last = new Date(appData.lastStudyDate);
+            const today = new Date(todayStr);
+            const diffDays = Math.floor((today - last) / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) {
+                // Same day - count backwards
+                let streak = 1;
+                let checkDate = new Date(last);
+                checkDate.setDate(checkDate.getDate() - 1);
+                
+                while (true) {
+                    const dateStr = checkDate.toISOString().split('T')[0];
+                    const tasks = appData.tasks[dateStr] || [];
+                    const hasDoneTasks = tasks.some(t => t.done);
+                    
+                    if (!hasDoneTasks) break;
+                    streak++;
+                    checkDate.setDate(checkDate.getDate() - 1);
+                }
+                return streak;
+            } else if (diffDays === 1) {
+                // Yesterday - continue streak
+                let streak = 1;
+                let checkDate = new Date(last);
+                
+                while (true) {
+                    const dateStr = checkDate.toISOString().split('T')[0];
+                    const tasks = appData.tasks[dateStr] || [];
+                    const hasDoneTasks = tasks.some(t => t.done);
+                    
+                    if (!hasDoneTasks) break;
+                    streak++;
+                    checkDate.setDate(checkDate.getDate() - 1);
+                }
+                return streak;
+            } else {
+                return 0; // Streak broken
+            }
+        }
+
+        function updateStreak() {
+            const tasks = appData.tasks[todayStr] || [];
+            const hasDoneTasks = tasks.some(t => t.done);
+            
+            if (hasDoneTasks) {
+                appData.lastStudyDate = todayStr;
+                saveData();
+            }
+            
+            const streak = calculateStreak();
+            document.getElementById('streak-display').innerHTML = `🔥 ${streak} Day Streak`;
+        }
+
+        // ==========================================
+        // 60-DAY PLAN GENERATOR
         // ==========================================
         function generate60DayPlan() {
             const mathTopics = [
@@ -495,16 +792,20 @@
                 appData.tasks[dateStr] = dailyTasks;
             }
             saveData();
+            showToast('60-day plan generated successfully!', 'success');
         }
 
-        function resetApp() {
-            if(confirm("Wipe all data and restart the 60-day plan?")) {
+        function confirmReset() {
+            if(confirm("⚠️ This will wipe all data and restart the 60-day plan. Continue?")) {
                 localStorage.removeItem(LOCAL_KEY);
-                appData = { tasks: {}, mocks: [] }; 
+                appData = { tasks: {}, mocks: [], lastStudyDate: null }; 
                 generate60DayPlan(); 
                 renderTracker();
                 renderAnalyticsHome();
-                alert("StudyBuddy has been completely reset!");
+                renderInsights();
+                renderComparison();
+                showToast('StudyBuddy has been completely reset!', 'success');
+                switchTab('tracker-view');
             }
         }
 
@@ -565,7 +866,7 @@
             const tasks = appData.tasks[selectedDateStr] || [];
             
             if(tasks.length === 0) {
-                listEl.innerHTML = '<p style="color:var(--text-muted); font-size:0.95rem;">No tasks scheduled. Rest up!</p>';
+                listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">No tasks scheduled</div><div class="empty-state-desc">Rest up and recharge!</div></div>';
             } else {
                 tasks.forEach(task => {
                     listEl.innerHTML += `
@@ -576,17 +877,404 @@
                     `;
                 });
             }
+            
+            updateStreak();
         }
 
         function changeWeek(offset) { currentWeekOffset += offset; renderTracker(); }
         
         function toggleTask(dateStr, taskId) {
             const task = appData.tasks[dateStr].find(t => t.id === taskId);
-            if(task) { task.done = !task.done; saveData(); renderTracker(); }
+            if(task) { 
+                task.done = !task.done; 
+                saveData(); 
+                renderTracker();
+                showToast(task.done ? 'Task completed! 🎉' : 'Task marked incomplete', task.done ? 'success' : 'info');
+            }
         }
 
         // ==========================================
-        // MOCK EXAM ENGINE LOGIC
+        // SUBJECT-WISE PERFORMANCE ANALYSIS
+        // ==========================================
+        function getSubjectPerformance() {
+            const subjectData = {};
+            
+            appData.mocks.forEach(mock => {
+                // Calculate per section
+                for (const [secName, qCount] of Object.entries(mock.sections || {})) {
+                    if (!subjectData[secName]) {
+                        subjectData[secName] = { correct: 0, wrong: 0, attempted: 0, total: 0 };
+                    }
+                    
+                    // Count section-specific performance
+                    let sectionCorrect = 0, sectionWrong = 0, sectionAttempted = 0;
+                    
+                    for (let qNum = 1; qNum <= qCount; qNum++) {
+                        const qId = `${secName}-${qNum}`;
+                        const userAns = mock.userAnswers?.[qId];
+                        const actualAns = mock.actualAnswers?.[qId];
+                        
+                        if (userAns) {
+                            sectionAttempted++;
+                            if (userAns === actualAns) sectionCorrect++;
+                            else sectionWrong++;
+                        }
+                    }
+                    
+                    subjectData[secName].correct += sectionCorrect;
+                    subjectData[secName].wrong += sectionWrong;
+                    subjectData[secName].attempted += sectionAttempted;
+                    subjectData[secName].total += qCount;
+                }
+            });
+            
+            return subjectData;
+        }
+
+        function renderSubjectPerformance() {
+            const container = document.getElementById('subject-performance');
+            const subjectData = getSubjectPerformance();
+            
+            if (Object.keys(subjectData).length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📚</div><div class="empty-state-text">No subject data yet</div><div class="empty-state-desc">Take a mock test to see performance breakdown</div></div>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            for (const [subject, data] of Object.entries(subjectData)) {
+                const accuracy = data.attempted === 0 ? 0 : (data.correct / data.attempted) * 100;
+                const strength = accuracy >= 75 ? 'Strong' : accuracy >= 50 ? 'Average' : 'Weak';
+                const color = accuracy >= 75 ? 'var(--accent)' : accuracy >= 50 ? 'var(--warning)' : 'var(--danger)';
+                
+                container.innerHTML += `
+                    <div class="subject-perf-card">
+                        <div class="perf-header">
+                            <div>
+                                <strong style="font-size:1.1rem;">${subject}</strong>
+                                <div style="color:var(--text-muted); font-size:0.85rem; margin-top:4px;">
+                                    ${data.correct}/${data.attempted} correct • ${data.total} total questions
+                                </div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:1.3rem; font-weight:700; color:${color};">${accuracy.toFixed(1)}%</div>
+                                <div style="font-size:0.8rem; color:${color}; font-weight:600;">${strength}</div>
+                            </div>
+                        </div>
+                        <div class="perf-bar">
+                            <div class="perf-bar-fill" style="width: ${accuracy}%; background: ${color};"></div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // ==========================================
+        // INSIGHTS & SMART ANALYTICS
+        // ==========================================
+        function renderInsights() {
+            const container = document.getElementById('insights-container');
+            const weakContainer = document.getElementById('weak-areas');
+            
+            if (appData.mocks.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💡</div><div class="empty-state-text">No insights yet</div><div class="empty-state-desc">Take mock tests to unlock smart insights</div></div>';
+                weakContainer.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🎯</div><div class="empty-state-text">No weak areas identified</div></div>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            weakContainer.innerHTML = '';
+            
+            // Calculate trends
+            const recent5 = appData.mocks.slice(-5);
+            const avgAccuracy = recent5.reduce((acc, m) => acc + m.accuracy, 0) / recent5.length;
+            
+            const firstMock = appData.mocks[0];
+            const lastMock = appData.mocks[appData.mocks.length - 1];
+            const improvement = lastMock.accuracy - firstMock.accuracy;
+            
+            // Insight 1: Overall trend
+            if (improvement > 10) {
+                container.innerHTML += `
+                    <div class="insight-card">
+                        <div class="insight-title">🚀 Great Progress!</div>
+                        <div class="insight-desc">Your accuracy has improved by ${improvement.toFixed(1)}% since your first mock. Keep up the excellent work!</div>
+                    </div>
+                `;
+            } else if (improvement < -5) {
+                container.innerHTML += `
+                    <div class="insight-card" style="border-left-color: var(--danger); background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(245, 158, 11, 0.1));">
+                        <div class="insight-title" style="color: var(--danger);">⚠️ Need Focus</div>
+                        <div class="insight-desc">Your recent performance has dipped by ${Math.abs(improvement).toFixed(1)}%. Review your weak topics and maintain consistency.</div>
+                    </div>
+                `;
+            }
+            
+            // Insight 2: Consistency
+            if (appData.mocks.length >= 5) {
+                const last5Accuracy = recent5.map(m => m.accuracy);
+                const variance = Math.sqrt(last5Accuracy.reduce((sum, acc) => sum + Math.pow(acc - avgAccuracy, 2), 0) / 5);
+                
+                if (variance < 5) {
+                    container.innerHTML += `
+                        <div class="insight-card">
+                            <div class="insight-title">🎯 Consistent Performer</div>
+                            <div class="insight-desc">Your last 5 mocks show great consistency with ${avgAccuracy.toFixed(1)}% average accuracy. This stability is key to exam success!</div>
+                        </div>
+                    `;
+                }
+            }
+            
+            // Insight 3: Time management
+            const avgTimePerQ = appData.mocks.reduce((acc, m) => acc + m.timePerQ, 0) / appData.mocks.length;
+            if (avgTimePerQ < 30) {
+                container.innerHTML += `
+                    <div class="insight-card">
+                        <div class="insight-title">⚡ Speed Master</div>
+                        <div class="insight-desc">You're averaging ${avgTimePerQ.toFixed(0)}s per question - excellent speed! Now focus on maintaining high accuracy.</div>
+                    </div>
+                `;
+            } else if (avgTimePerQ > 60) {
+                container.innerHTML += `
+                    <div class="insight-card" style="border-left-color: var(--warning); background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(239, 68, 68, 0.1));">
+                        <div class="insight-title" style="color: var(--warning);">⏱️ Time Management</div>
+                        <div class="insight-desc">You're spending ${avgTimePerQ.toFixed(0)}s per question on average. Practice speed drills to improve time efficiency.</div>
+                    </div>
+                `;
+            }
+            
+            // Weak areas identification
+            const subjectData = getSubjectPerformance();
+            const weakSubjects = Object.entries(subjectData)
+                .filter(([_, data]) => {
+                    const acc = data.attempted === 0 ? 0 : (data.correct / data.attempted) * 100;
+                    return acc < 60;
+                })
+                .sort((a, b) => {
+                    const accA = a[1].attempted === 0 ? 0 : (a[1].correct / a[1].attempted) * 100;
+                    const accB = b[1].attempted === 0 ? 0 : (b[1].correct / b[1].attempted) * 100;
+                    return accA - accB;
+                });
+            
+            if (weakSubjects.length > 0) {
+                weakSubjects.forEach(([subject, data]) => {
+                    const accuracy = data.attempted === 0 ? 0 : (data.correct / data.attempted) * 100;
+                    weakContainer.innerHTML += `
+                        <div class="subject-perf-card" style="border-left: 3px solid var(--danger);">
+                            <div class="perf-header">
+                                <div>
+                                    <strong style="font-size:1.05rem;">${subject}</strong>
+                                    <div style="color:var(--danger); font-size:0.85rem; margin-top:4px; font-weight:600;">
+                                        Needs Improvement - ${accuracy.toFixed(1)}% accuracy
+                                    </div>
+                                </div>
+                                <div style="font-size:0.9rem; color:var(--text-muted);">
+                                    ${data.correct}/${data.attempted} correct
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                weakContainer.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✨</div><div class="empty-state-text">No weak areas!</div><div class="empty-state-desc">You\'re performing well across all subjects</div></div>';
+            }
+            
+            // Pattern chart
+            renderPatternChart();
+        }
+
+        function renderPatternChart() {
+            const ctx = document.getElementById('patternChart').getContext('2d');
+            
+            if (window.patternChartInstance) window.patternChartInstance.destroy();
+            
+            const labels = appData.mocks.map((_, i) => `Mock ${i+1}`);
+            const accuracy = appData.mocks.map(m => m.accuracy);
+            const timePerQ = appData.mocks.map(m => m.timePerQ);
+            
+            window.patternChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Accuracy %',
+                            data: accuracy,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            yAxisID: 'y',
+                            borderWidth: 3,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Time/Q (sec)',
+                            data: timePerQ,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            yAxisID: 'y1',
+                            borderWidth: 3,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: { display: true, text: 'Accuracy %' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: { display: true, text: 'Time/Q (sec)' },
+                            grid: { drawOnChartArea: false }
+                        },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: {
+                        legend: { display: true, position: 'top' }
+                    }
+                }
+            });
+        }
+
+        // ==========================================
+        // COMPARISON VIEW
+        // ==========================================
+        function renderComparison() {
+            const container = document.getElementById('comparison-container');
+            
+            if (appData.mocks.length < 2) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📈</div><div class="empty-state-text">Not enough data</div><div class="empty-state-desc">Take at least 2 mock tests to compare performance</div></div>';
+                return;
+            }
+            
+            const latest = appData.mocks[appData.mocks.length - 1];
+            const previous = appData.mocks[appData.mocks.length - 2];
+            
+            container.innerHTML = '';
+            
+            // Accuracy comparison
+            const accDelta = latest.accuracy - previous.accuracy;
+            container.innerHTML += `
+                <div class="comparison-card">
+                    <div class="comp-side">
+                        <div class="comp-label">Previous Mock</div>
+                        <div class="comp-value">${previous.accuracy.toFixed(1)}%</div>
+                    </div>
+                    <div class="comp-arrow">${accDelta >= 0 ? '→' : '←'}</div>
+                    <div class="comp-side">
+                        <div class="comp-label">Latest Mock</div>
+                        <div class="comp-value">${latest.accuracy.toFixed(1)}%</div>
+                        <div class="comp-delta ${accDelta >= 0 ? 'positive' : 'negative'}">
+                            ${accDelta >= 0 ? '↑' : '↓'} ${Math.abs(accDelta).toFixed(1)}%
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Score comparison
+            const scoreDelta = latest.score - previous.score;
+            container.innerHTML += `
+                <div class="comparison-card">
+                    <div class="comp-side">
+                        <div class="comp-label">Previous Score</div>
+                        <div class="comp-value">${previous.score}</div>
+                    </div>
+                    <div class="comp-arrow">${scoreDelta >= 0 ? '→' : '←'}</div>
+                    <div class="comp-side">
+                        <div class="comp-label">Latest Score</div>
+                        <div class="comp-value">${latest.score}</div>
+                        <div class="comp-delta ${scoreDelta >= 0 ? 'positive' : 'negative'}">
+                            ${scoreDelta >= 0 ? '↑' : '↓'} ${Math.abs(scoreDelta).toFixed(2)}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Time management comparison
+            const timeDelta = latest.timePerQ - previous.timePerQ;
+            container.innerHTML += `
+                <div class="comparison-card">
+                    <div class="comp-side">
+                        <div class="comp-label">Previous Time/Q</div>
+                        <div class="comp-value">${previous.timePerQ}s</div>
+                    </div>
+                    <div class="comp-arrow">${timeDelta <= 0 ? '→' : '←'}</div>
+                    <div class="comp-side">
+                        <div class="comp-label">Latest Time/Q</div>
+                        <div class="comp-value">${latest.timePerQ}s</div>
+                        <div class="comp-delta ${timeDelta <= 0 ? 'positive' : 'negative'}">
+                            ${timeDelta <= 0 ? '↓' : '↑'} ${Math.abs(timeDelta)}s
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Render improvement chart
+            renderImprovementChart();
+        }
+
+        function renderImprovementChart() {
+            const ctx = document.getElementById('improvementChart').getContext('2d');
+            
+            if (window.improvementChartInstance) window.improvementChartInstance.destroy();
+            
+            const labels = appData.mocks.map((_, i) => `Mock ${i+1}`);
+            const scores = appData.mocks.map(m => m.score);
+            const maxScores = appData.mocks.map(m => m.maxScore);
+            
+            window.improvementChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Your Score',
+                            data: scores,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Max Score',
+                            data: maxScores,
+                            borderColor: '#71717a',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { 
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: {
+                        legend: { display: true, position: 'top' }
+                    }
+                }
+            });
+        }
+
+        // ==========================================
+        // MOCK EXAM ENGINE
         // ==========================================
         let currentExam = {};
         let userAnswers = {}; 
@@ -596,6 +1284,7 @@
         let timeRemainingSec = 0;
         let currentActiveSection = '';
         let sectionTimes = {};
+        let currentFilter = 'all';
         const letters = ['A', 'B', 'C', 'D', 'E'];
 
         function addSubjectRow() {
@@ -611,6 +1300,12 @@
         }
 
         function startExam() {
+            const title = document.getElementById('setup-title').value.trim();
+            if (!title) {
+                showToast('Please enter an exam title', 'warning');
+                return;
+            }
+            
             let sectionsData = {};
             document.querySelectorAll('.subject-row').forEach(row => {
                 const name = row.querySelector('.sub-name').value.trim();
@@ -618,8 +1313,13 @@
                 if (name && qs > 0) sectionsData[name] = qs;
             });
 
+            if (Object.keys(sectionsData).length === 0) {
+                showToast('Add at least one section with questions', 'warning');
+                return;
+            }
+
             currentExam = {
-                title: document.getElementById('setup-title').value.trim() || 'Mock Test',
+                title: title,
                 sections: sectionsData,
                 opts: parseInt(document.getElementById('setup-opts').value),
                 correctMarks: parseFloat(document.getElementById('setup-correct').value),
@@ -628,10 +1328,10 @@
             };
 
             currentExam.totalQs = Object.values(currentExam.sections).reduce((a, b) => a + b, 0);
-            if (currentExam.totalQs === 0) { alert("Add questions to at least one section."); return; }
 
             userAnswers = {}; actualAnswers = {}; reviewStatus = {}; sectionTimes = {};
             currentActiveSection = Object.keys(currentExam.sections)[0];
+            currentFilter = 'all';
             
             document.getElementById('total-qs-count').innerText = currentExam.totalQs;
             document.getElementById('attempted-count').innerText = 0;
@@ -643,6 +1343,7 @@
             examTimerInterval = setInterval(timerTick, 1000);
 
             switchTab('active-exam-view');
+            showToast('Exam started! Good luck! 🚀', 'success');
         }
 
         function timerTick() {
@@ -654,9 +1355,41 @@
                 const m = Math.floor(timeRemainingSec / 60).toString().padStart(2, '0');
                 const s = (timeRemainingSec % 60).toString().padStart(2, '0');
                 document.getElementById('exam-timer').innerText = `${m}:${s}`;
+                
+                // Warning at 5 minutes
+                if (timeRemainingSec === 300) {
+                    showToast('⏰ 5 minutes remaining!', 'warning');
+                }
             } else {
                 submitExam();
             }
+        }
+
+        function filterQuestions(filter) {
+            currentFilter = filter;
+            
+            // Update pill styles
+            document.querySelectorAll('.filter-pill').forEach(pill => {
+                pill.classList.remove('active');
+                if (pill.dataset.filter === filter) {
+                    pill.classList.add('active');
+                }
+            });
+            
+            // Filter questions
+            document.querySelectorAll('.omr-q-row').forEach(row => {
+                const qId = row.querySelector('.bubbles-container').id.replace('usr-', '');
+                const isAttempted = userAnswers[qId] !== undefined;
+                const isReview = reviewStatus[qId];
+                
+                let show = false;
+                if (filter === 'all') show = true;
+                else if (filter === 'attempted') show = isAttempted;
+                else if (filter === 'unattempted') show = !isAttempted;
+                else if (filter === 'review') show = isReview;
+                
+                row.classList.toggle('hidden', !show);
+            });
         }
 
         function generateOMRUI(viewId, isAnswerKey) {
@@ -678,6 +1411,7 @@
                         tab.classList.add('active');
                         Array.from(sheetsContainer.children).forEach(c => c.classList.remove('active'));
                         document.getElementById(`sec-container-${isAnswerKey ? 'ans' : 'usr'}-${secName}`).classList.add('active');
+                        if (!isAnswerKey) filterQuestions(currentFilter);
                     };
                     tabsContainer.appendChild(tab);
 
@@ -713,8 +1447,12 @@
 
         function toggleReview(qId, element) {
             reviewStatus[qId] = !reviewStatus[qId];
-            if (reviewStatus[qId]) element.classList.add('review-active');
-            else element.classList.remove('review-active');
+            if (reviewStatus[qId]) {
+                element.classList.add('review-active');
+                showToast('Question marked for review', 'info');
+            } else {
+                element.classList.remove('review-active');
+            }
         }
 
         function handleBubbleClick(qId, val, isAnswerKey, container) {
@@ -729,21 +1467,57 @@
             }
         }
 
+        function confirmSubmit() {
+            const unattempted = currentExam.totalQs - Object.keys(userAnswers).length;
+            if (unattempted > 0) {
+                if (!confirm(`⚠️ You have ${unattempted} unattempted questions. Submit anyway?`)) {
+                    return;
+                }
+            }
+            submitExam();
+        }
+
         function submitExam() {
             clearInterval(examTimerInterval);
             actualAnswers = {}; 
             currentActiveSection = Object.keys(currentExam.sections)[0];
             generateOMRUI('answer-key-view', true);
             switchTab('answer-key-view');
+            showToast('Exam submitted! Now enter the answer key', 'info');
         }
 
         function evaluateExam() {
+            // Validate answer key
+            if (Object.keys(actualAnswers).length === 0) {
+                showToast('Please enter at least some correct answers', 'warning');
+                return;
+            }
+            
             let correct = 0, wrong = 0;
             let attempted = Object.keys(userAnswers).length;
-
-            for (let qId in userAnswers) {
-                if (userAnswers[qId] === actualAnswers[qId]) correct++;
-                else if (actualAnswers[qId] !== undefined) wrong++; 
+            
+            // Calculate section-wise performance
+            const sectionPerformance = {};
+            
+            for (const [secName, qCount] of Object.entries(currentExam.sections)) {
+                sectionPerformance[secName] = { correct: 0, wrong: 0, attempted: 0, total: qCount };
+                
+                for (let qNum = 1; qNum <= qCount; qNum++) {
+                    const qId = `${secName}-${qNum}`;
+                    const userAns = userAnswers[qId];
+                    const actualAns = actualAnswers[qId];
+                    
+                    if (userAns) {
+                        sectionPerformance[secName].attempted++;
+                        if (userAns === actualAns) {
+                            correct++;
+                            sectionPerformance[secName].correct++;
+                        } else if (actualAns !== undefined) {
+                            wrong++;
+                            sectionPerformance[secName].wrong++;
+                        }
+                    }
+                }
             }
 
             const notAttempted = currentExam.totalQs - attempted;
@@ -767,7 +1541,12 @@
                 percentage: parseFloat(((score / maxScore) * 100).toFixed(1)),
                 timePerQ: Math.round(avgTimePerQ),
                 sectionTimes: sectionTimes,
-                totalTimeSpent: totalTimeSpent
+                totalTimeSpent: totalTimeSpent,
+                sections: currentExam.sections,
+                userAnswers: userAnswers,
+                actualAnswers: actualAnswers,
+                reviewStatus: reviewStatus,
+                sectionPerformance: sectionPerformance
             };
 
             appData.mocks.push(mockResult);
@@ -776,6 +1555,7 @@
             renderReport(mockResult);
             renderResultDashboard(mockResult); 
             switchTab('report-view');
+            showToast('🎉 Exam evaluated successfully!', 'success');
         }
 
         // ==========================================
@@ -849,6 +1629,36 @@
                     secTimesContainer.innerHTML += `<div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border-color); font-size:0.95rem;"><strong>${sec}</strong> <span style="color: var(--primary); font-weight:600;">${formatTime(time)}</span></div>`;
                 }
             }
+            
+            // Section-wise breakdown
+            const secBreakdownContainer = document.getElementById('res-section-breakdown');
+            secBreakdownContainer.innerHTML = '';
+            
+            if (result.sectionPerformance) {
+                for (const [secName, perf] of Object.entries(result.sectionPerformance)) {
+                    const accuracy = perf.attempted === 0 ? 0 : (perf.correct / perf.attempted) * 100;
+                    const color = accuracy >= 75 ? 'var(--accent)' : accuracy >= 50 ? 'var(--warning)' : 'var(--danger)';
+                    
+                    secBreakdownContainer.innerHTML += `
+                        <div class="subject-perf-card">
+                            <div class="perf-header">
+                                <div>
+                                    <strong style="font-size:1.05rem;">${secName}</strong>
+                                    <div style="color:var(--text-muted); font-size:0.85rem; margin-top:4px;">
+                                        ${perf.correct}/${perf.attempted} correct • ${perf.total} total
+                                    </div>
+                                </div>
+                                <div style="text-align:right;">
+                                    <div style="font-size:1.3rem; font-weight:700; color:${color};">${accuracy.toFixed(1)}%</div>
+                                </div>
+                            </div>
+                            <div class="perf-bar">
+                                <div class="perf-bar-fill" style="width: ${accuracy}%; background: ${color};"></div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
 
             if(donutChartVar) donutChartVar.destroy();
             const ctx = document.getElementById('donutChart').getContext('2d');
@@ -858,17 +1668,26 @@
                     labels: ['Correct', 'Wrong', 'Not Attempted'],
                     datasets: [{
                         data: [result.correct, result.wrong, result.notAttempted],
-                        backgroundColor: ['#10b981', '#ef4444', '#71717a'], borderWidth: 0
+                        backgroundColor: ['#10b981', '#ef4444', '#71717a'], 
+                        borderWidth: 0
                     }]
                 },
-                options: { cutout: '75%', plugins: { legend: { display: false } }, maintainAspectRatio: false }
+                options: { 
+                    cutout: '75%', 
+                    plugins: { legend: { display: false } }, 
+                    maintainAspectRatio: false 
+                }
             });
         }
 
         function deleteMock(id) {
-            if(confirm("Delete this exam record?")) {
+            if(confirm("⚠️ Delete this exam record permanently?")) {
                 appData.mocks = appData.mocks.filter(m => m.id !== id);
-                saveData(); renderAnalyticsHome();
+                saveData(); 
+                renderAnalyticsHome();
+                renderInsights();
+                renderComparison();
+                showToast('Exam deleted', 'info');
             }
         }
 
@@ -877,35 +1696,29 @@
             listEl.innerHTML = '';
             
             if (appData.mocks.length === 0) {
-                listEl.innerHTML = '<p style="color: var(--text-muted); padding: 10px 0;">No exams taken yet.</p>';
+                listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><div class="empty-state-text">No exams taken yet</div><div class="empty-state-desc">Start your first mock test to track progress</div></div>';
             } else {
                 [...appData.mocks].reverse().forEach(m => {
                     listEl.innerHTML += `
                         <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 0; border-bottom:1px solid var(--border-color);">
                             <div style="flex:1;">
                                 <strong style="font-size:1.05rem;">${m.title}</strong> 
-                                <div style="color:var(--text-muted); font-size:0.85rem; margin-top:6px;">${m.date} • ${m.accuracy}% Acc</div>
+                                <div style="color:var(--text-muted); font-size:0.85rem; margin-top:6px;">${m.date} • ${m.accuracy}% Acc • ${m.score}/${m.maxScore}</div>
                             </div>
                             <div style="display:flex; align-items:center; gap: 15px;">
-                                <div style="color: var(--accent); font-weight:700; font-size:1.15rem;">${m.score}</div>
-                                <button onclick="deleteMock(${m.id})" style="background:var(--bg-elevated); border:1px solid var(--border-color); color:var(--danger); cursor:pointer; font-size:1.1rem; padding:8px 12px; border-radius:8px; transition:0.2s;" title="Delete">🗑</button>
+                                <div style="color: var(--accent); font-weight:700; font-size:1.15rem;">${m.percentage}%</div>
+                                <button onclick="deleteMock(${m.id})" style="background:var(--bg-elevated); border:2px solid var(--border-color); color:var(--danger); cursor:pointer; font-size:1.1rem; padding:8px 12px; border-radius:8px; transition:0.2s;" title="Delete">🗑</button>
                             </div>
                         </div>
                     `;
                 });
             }
 
+            renderSubjectPerformance();
+
             const labels = appData.mocks.map((_, i) => `Mock ${i+1}`);
             const dataAcc = appData.mocks.map(m => m.accuracy);
             
-            const tooltips = appData.mocks.map(m => {
-                let str = "";
-                for(const [sec, time] of Object.entries(m.sectionTimes)) {
-                    if (time > 0) str += `${sec.substring(0,3)}: ${Math.floor(time/60)}m `;
-                }
-                return str;
-            });
-
             if(mainChart) mainChart.destroy();
             const ctx = document.getElementById('mainTrendChart').getContext('2d');
             mainChart = new Chart(ctx, {
@@ -913,33 +1726,72 @@
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Accuracy %', data: dataAcc, borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 3,
-                        pointBackgroundColor: '#ef4444', pointRadius: 4, fill: true, tension: 0.4
+                        label: 'Accuracy %', 
+                        data: dataAcc, 
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)', 
+                        borderWidth: 3,
+                        pointBackgroundColor: '#3b82f6', 
+                        pointRadius: 5, 
+                        pointHoverRadius: 7,
+                        fill: true, 
+                        tension: 0.4
                     }]
                 },
                 options: {
-                    responsive: true, maintainAspectRatio: false,
-                    scales: { y: { beginAtZero: true, max: 100, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } },
-                    plugins: { legend: { display: false }, tooltip: { callbacks: { afterLabel: function(ctx) { return tooltips[ctx.dataIndex]; } } } }
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    scales: { 
+                        y: { 
+                            beginAtZero: true, 
+                            max: 100, 
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#a1a1aa' }
+                        }, 
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: '#a1a1aa' }
+                        } 
+                    },
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            padding: 12,
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: 'rgba(255,255,255,0.2)',
+                            borderWidth: 1
+                        }
+                    }
                 }
             });
         }
 
         // ==========================================
-        // NAVIGATION INIT
+        // NAVIGATION
         // ==========================================
         function switchTab(tabId) {
             document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-            if(event && event.currentTarget.classList.contains('nav-btn')) event.currentTarget.classList.add('active');
+            if(event && event.currentTarget && event.currentTarget.classList.contains('nav-btn')) {
+                event.currentTarget.classList.add('active');
+            }
             
             document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             
             if(tabId === 'analytics-home') renderAnalyticsHome();
             if(tabId === 'tracker-view') renderTracker();
+            if(tabId === 'insights-view') renderInsights();
+            if(tabId === 'comparison-view') renderComparison();
+            
             window.scrollTo(0, 0); 
         }
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            updateStreak();
+        });
     </script>
 </body>
 </html>
