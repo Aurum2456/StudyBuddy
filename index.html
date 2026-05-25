@@ -347,6 +347,10 @@
         // ==========================================
         let appData = { tasks: {}, mocks: [] };
         const LOCAL_KEY = "studybuddy_local_backup";
+        
+        // MOVED THESE TO THE TOP TO PREVENT CRASHES
+        const todayReal = new Date();
+        const todayStr = todayReal.toISOString().split('T')[0];
 
         const firebaseConfig = { 
             apiKey: "AIzaSyCPB7zv_lI5YcJ59DcFCF6rT25nj6lWHy8", 
@@ -368,17 +372,14 @@
                 if (doc.exists) {
                     appData = doc.data();
                 } else {
-                    // First load -> Create Plan -> UI updates happen below
                     if (Object.keys(appData.tasks).length === 0) {
                         generate60DayPlan();
                     }
                 }
-                // ALWAYS render UI after checking data
                 renderTracker();
                 renderAnalyticsHome();
             }, (error) => {
-                console.error("Firebase Security Rule Blocked Sync:", error);
-                alert("Cloud Sync is paused. Running perfectly in Local Offline Mode.");
+                console.error("Firebase Sync Blocked:", error);
                 fallbackToLocal();
             });
         } catch (e) {
@@ -394,19 +395,13 @@
         }
 
         function saveData() {
-            // 1. Always save locally as a bulletproof backup
             localStorage.setItem(LOCAL_KEY, JSON.stringify(appData));
-            
-            // 2. Try pushing to the cloud
             try {
                 const db = firebase.firestore();
                 db.collection('bankquest_users').doc('my_personal_data')
                   .set(appData).catch(err => console.log("Cloud sync delayed: ", err));
-            } catch (e) {} // Catch safely if offline
+            } catch (e) {} 
         }
-
-        const todayReal = new Date();
-        const todayStr = todayReal.toISOString().split('T')[0];
 
         // ==========================================
         // 60-DAY PROGRESSIVE PLAN GENERATOR 
@@ -502,7 +497,6 @@
             saveData();
         }
 
-        // Hard Reset Button Logic
         function resetApp() {
             if(confirm("Wipe all data and restart the 60-day plan?")) {
                 localStorage.removeItem(LOCAL_KEY);
