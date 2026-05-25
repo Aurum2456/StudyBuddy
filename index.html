@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>StudyBuddy</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0f0f11;
+            --bg-surface: #1a1a1c;
+            --bg-elevated: #27272a;
+            --border-color: #3f3f46;
+            
+            --text-main: #f4f4f5;
+            --text-muted: #a1a1aa;
+            
+            --accent: #10b981; 
+            --primary: #3b82f6; 
+            --danger: #ef4444;  
+            --warning: #f59e0b; 
+            --missed: #71717a;  
+            --time-bg: rgba(59, 130, 246, 0.15);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+
+        body { background-color: var(--bg-base); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; flex-direction: row; }
+
+        /* Navigation */
+        nav {
+            width: 250px; background-color: var(--bg-surface); border-right: 1px solid var(--border-color);
+            padding: 30px 20px; display: flex; flex-direction: column; gap: 12px; z-index: 100;
+        }
+        .logo { font-size: 1.5rem; font-weight: 700; text-align: center; margin-bottom: 35px; letter-spacing: 1px; color: var(--text-main); }
+        .logo span { color: var(--primary); }
+        .nav-btn {
+            background: transparent; color: var(--text-muted); border: 1px solid transparent; padding: 12px 16px;
+            text-align: left; border-radius: 8px; cursor: pointer; font-size: 0.95rem; font-weight: 500; transition: 0.2s;
+            display: flex; align-items: center; justify-content: flex-start;
+        }
+        .nav-btn:hover { background: var(--bg-elevated); color: var(--text-main); }
+        .nav-btn.active { background: var(--bg-elevated); color: var(--text-main); border-left: 3px solid var(--primary); border-radius: 0 8px 8px 0; }
+        .reset-btn { margin-top: auto; color: var(--danger); }
+
+        main { flex: 1; padding: 40px; overflow-y: auto; scroll-behavior: smooth; }
+        .view-section { display: none; max-width: 900px; margin: 0 auto; animation: fadeIn 0.3s ease; }
+        .view-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Cards & Typography */
+        .card { background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 30px; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        h2 { font-size: 1.3rem; margin-bottom: 25px; font-weight: 600; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 14px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; width: 100%; transition: 0.2s; }
+        .btn-primary:hover { opacity: 0.9; }
+        .btn-primary:active { transform: scale(0.98); }
+
+        /* Daily Tracker */
+        .days-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 25px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
+        .days-row::-webkit-scrollbar { display: none; }
+        .day-box { flex: 1; min-width: 50px; background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 4px; text-align: center; cursor: pointer; transition: 0.2s; }
+        .day-box.active { border-color: var(--primary); background: rgba(59, 130, 246, 0.1); }
+        .day-box.has-tasks::after { content: ''; display: block; width: 6px; height: 6px; background: var(--primary); border-radius: 50%; margin: 6px auto 0; }
+        .task-item { display: flex; align-items: flex-start; background: var(--bg-elevated); padding: 16px; border-radius: 8px; margin-bottom: 12px; border: 1px solid var(--border-color); cursor: pointer; transition: 0.2s; }
+        .task-item:hover { border-color: var(--text-muted); }
+        .task-checkbox { width: 22px; height: 22px; margin-right: 16px; margin-top: 2px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+        .task-text { flex: 1; font-size: 0.95rem; line-height: 1.5; }
+        .task-item.done { opacity: 0.5; border-color: var(--border-color); }
+        .task-item.done .task-text { text-decoration: line-through; color: var(--text-muted); }
+        .task-time { color: var(--primary); font-size: 0.8rem; font-weight: 700; background: var(--time-bg); padding: 4px 8px; border-radius: 6px; margin-right: 8px; display: inline-block; margin-bottom: 6px; letter-spacing: 0.5px; }
+        .task-item.done .task-time { color: var(--text-muted); background: transparent; border: 1px solid var(--border-color); }
+
+        /* Form Styling Overhaul */
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 8px; }
+        .form-group input { width: 100%; background: var(--bg-elevated); border: 1px solid var(--border-color); color: var(--text-main); padding: 12px 15px; border-radius: 8px; font-size: 1rem; outline: none; transition: 0.2s; }
+        .form-group input:focus { border-color: var(--primary); }
+
+        .omr-form-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color); gap: 15px; }
+        .omr-form-row label { color: var(--text-muted); font-size: 0.95rem; flex: 1; }
+        .omr-form-row input { background: var(--bg-elevated); border: 1px solid var(--border-color); color: var(--text-main); text-align: center; font-size: 1rem; padding: 8px 12px; border-radius: 6px; outline: none; width: 90px; transition: 0.2s; }
+        .omr-form-row input:focus { border-color: var(--primary); }
+
+        /* Dynamic Subject Rows */
+        .subject-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
+        .subject-row .sub-name { flex: 1; background: var(--bg-elevated); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px 12px; border-radius: 6px; font-size: 0.95rem; font-weight: 500; outline: none; }
+        .subject-row .sub-qs { width: 80px; text-align: center; background: var(--bg-elevated); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 6px; font-size: 0.95rem; outline: none; }
+        .subject-row .sub-name:focus, .subject-row .sub-qs:focus { border-color: var(--primary); }
+        .subject-row .delete-btn { color: var(--danger); background: transparent; border: none; font-size: 1.5rem; cursor: pointer; padding: 0 5px; line-height: 1; width: 30px; text-align: center; }
+
+        /* Active OMR Sheet */
+        .sticky-header { position: sticky; top: -40px; background: var(--bg-base); padding: 20px 0 10px 0; z-index: 10; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; }
+        .section-tabs { display: flex; gap: 10px; margin-top: 15px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; }
+        .section-tabs::-webkit-scrollbar { display: none; }
+        .sec-tab { flex: 1; min-width: 100px; padding: 10px 12px; background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-muted); border-radius: 8px; cursor: pointer; text-align: center; white-space: nowrap; font-size: 0.95rem; font-weight: 500; transition: 0.2s; }
+        .sec-tab.active { background: rgba(59, 130, 246, 0.1); border-color: var(--primary); color: var(--primary); }
+        
+        .omr-sec-container { display: none; }
+        .omr-sec-container.active { display: block; animation: fadeIn 0.2s; }
+        
+        .omr-q-row { display: flex; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--bg-elevated); }
+        .q-num { width: 45px; font-size: 1rem; font-weight: 600; }
+        .q-icon { margin-right: 20px; color: var(--text-muted); font-size: 1.3rem; cursor: pointer; transition: 0.2s; }
+        .q-icon.review-active { color: var(--danger); }
+        
+        .bubbles-container { display: flex; gap: 12px; flex-wrap: wrap; }
+        .bubble { 
+            width: 36px; height: 36px; border: 2px solid var(--border-color); border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; background: var(--bg-elevated);
+            color: var(--text-main); font-weight: 600; cursor: pointer; font-size: 0.95rem; transition: 0.1s;
+        }
+        .bubble.selected { background-color: var(--primary); border-color: var(--primary); color: white; }
+
+        /* Report & Analytics */
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; }
+        .kpi-box { background: var(--bg-surface); border: 1px solid var(--border-color); padding: 20px; border-radius: 12px; text-align: center; }
+        .kpi-val { font-size: 1.6rem; font-weight: bold; margin-bottom: 6px; }
+        .kpi-label { color: var(--text-muted); font-size: 0.85rem; }
+
+        .report-card { background-color: #ffffff; color: #000000; max-width: 700px; margin: 0 auto; border-radius: 12px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 0.95rem; margin-bottom: 25px; }
+        .report-grid div { display: flex; justify-content: space-between; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; }
+        
+        .report-bubble {
+            width: 26px; height: 26px; border: 1px solid #ccc; border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 0.8rem; color: #555; margin-right: 6px;
+        }
+        .report-bubble.correct { background-color: var(--accent); color: white; border-color: var(--accent); }
+        .report-bubble.wrong { background-color: var(--danger); color: white; border-color: var(--danger); }
+        .report-bubble.missed { background-color: var(--missed); color: white; border-color: var(--missed); }
+        .report-q-num { display: inline-block; width: 30px; font-weight: bold; font-size: 0.95rem; }
+        .report-q-num.review { color: var(--danger); }
+
+        /* MOBILE RESPONSIVE MEDIA QUERIES */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            nav { 
+                width: 100%; height: 75px; flex-direction: row; padding: 5px; border-right: none; 
+                border-top: 1px solid var(--border-color); position: fixed; bottom: 0; 
+                background: rgba(26, 26, 28, 0.95); backdrop-filter: blur(10px);
+                justify-content: space-around; align-items: center; 
+            }
+            .logo { display: none; }
+            .nav-btn { flex-direction: column; justify-content: center; font-size: 0.75rem; padding: 5px; width: 25%; text-align: center; border-radius: 8px; gap: 4px; }
+            .nav-btn.active { border-left: none; background: rgba(59, 130, 246, 0.15); color: var(--primary); }
+            .reset-btn { margin-top: 0; }
+            
+            main { padding: 20px; padding-bottom: 95px; } 
+            .card { padding: 20px; margin-bottom: 20px; }
+            .sticky-header { top: -20px; }
+            
+            .kpi-grid { grid-template-columns: 1fr 1fr; }
+            .kpi-grid .kpi-box:last-child { grid-column: span 2; } 
+            
+            .omr-form-row label { font-size: 0.9rem; }
+            .subject-row { gap: 10px; }
+            
+            .report-card { padding: 20px; }
+            .report-grid { grid-template-columns: 1fr; gap: 12px; }
+            #report-omr-breakdown { grid-template-columns: 1fr 1fr; gap: 10px; } 
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="logo">Study<span>Buddy</span></div>
+        <button class="nav-btn active" onclick="switchTab('tracker-view')">Tracker</button>
+        <button class="nav-btn" onclick="switchTab('analytics-home')">Analysis</button>
+        <button class="nav-btn" onclick="switchTab('create-exam-view')" style="color: var(--primary);">+ Attempt Exam</button>
+        <button class="nav-btn reset-btn" onclick="resetApp()">Reset</button>
+    </nav>
+
+    <main>
+        <section id="tracker-view" class="view-section active">
+            <div class="card">
+                <div class="flex-between" style="margin-bottom: 20px;">
+                    <button onclick="changeWeek(-1)" style="background:var(--bg-elevated); color:white; border:1px solid var(--border-color); cursor:pointer; padding:8px 12px; border-radius:6px;">&#8592; Prev</button>
+                    <h3 id="month-year-label" style="font-size: 1.1rem; font-weight: 600;">Month Year</h3>
+                    <button onclick="changeWeek(1)" style="background:var(--bg-elevated); color:white; border:1px solid var(--border-color); cursor:pointer; padding:8px 12px; border-radius:6px;">Next &#8594;</button>
+                </div>
+                <div class="days-row" id="calendar-days"></div>
+            </div>
+            <div class="card" style="padding-top: 20px;">
+                <h2 id="selected-date-title" style="border:none; margin-bottom: 15px;">Tasks for Today</h2>
+                <div id="task-list"></div>
+            </div>
+        </section>
+
+        <section id="analytics-home" class="view-section">
+            <div class="card">
+                <h2>Accuracy Trend</h2>
+                <div style="height: 250px; position: relative;">
+                    <canvas id="mainTrendChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Recent Exams</h2>
+                <div id="recent-exams-list"></div>
+                <button class="btn-primary" style="margin-top: 20px;" onclick="switchTab('create-exam-view')">START NEW MOCK</button>
+            </div>
+        </section>
+
+        <section id="create-exam-view" class="view-section">
+            <div class="card" style="max-width: 650px; margin: 0 auto;">
+                <h2 style="text-align: center; border: none; font-size: 1.5rem; margin-bottom: 30px;">Create Custom Exam</h2>
+                
+                <div class="form-group">
+                    <label>Exam Title *</label>
+                    <input type="text" id="setup-title" placeholder="e.g., IBPS PO Prelims" required>
+                </div>
+                
+                <h3 style="margin-top: 35px; margin-bottom: 15px; font-size: 1.05rem; color: var(--primary); font-weight: 600;">Section Breakdown</h3>
+                <div id="dynamic-subjects-container">
+                    <div class="subject-row">
+                        <input type="text" class="sub-name" value="English" placeholder="Subject Name">
+                        <input type="number" class="sub-qs" value="30" inputmode="numeric">
+                        <div style="width:30px;"></div> </div>
+                    <div class="subject-row">
+                        <input type="text" class="sub-name" value="Quant" placeholder="Subject Name">
+                        <input type="number" class="sub-qs" value="35" inputmode="numeric">
+                        <div style="width:30px;"></div>
+                    </div>
+                    <div class="subject-row">
+                        <input type="text" class="sub-name" value="Reasoning" placeholder="Subject Name">
+                        <input type="number" class="sub-qs" value="35" inputmode="numeric">
+                        <div style="width:30px;"></div>
+                    </div>
+                </div>
+                
+                <button class="btn-primary" style="background:var(--bg-elevated); color:var(--primary); border: 1px solid var(--border-color); margin-top:15px; width:auto; font-size:0.9rem; padding:10px 20px;" onclick="addSubjectRow()">+ Add Subject</button>
+
+                <h3 style="margin-top: 40px; margin-bottom: 10px; font-size: 1.05rem; color: var(--primary); font-weight: 600;">Marking Scheme</h3>
+                <div class="omr-form-row"><label>Options per Question:</label><input type="number" id="setup-opts" value="5" max="5" inputmode="numeric"></div>
+                <div class="omr-form-row"><label>Marks for Correct (+):</label><input type="number" id="setup-correct" value="1" inputmode="decimal"></div>
+                <div class="omr-form-row"><label>Marks for Wrong (-):</label><input type="number" id="setup-wrong" step="0.25" value="0.25" inputmode="decimal"></div>
+                <div class="omr-form-row"><label>Total Duration (Mins):</label><input type="number" id="setup-time" value="60" inputmode="numeric"></div>
+
+                <button class="btn-primary" style="margin-top: 35px; font-size: 1.1rem; padding: 16px;" onclick="startExam()">START EXAM</button>
+            </div>
+        </section>
+
+        <section id="active-exam-view" class="view-section">
+            <div class="sticky-header">
+                <div class="flex-between">
+                    <div id="exam-timer" style="font-size: 1.5rem; font-weight: bold; color: var(--warning); letter-spacing: 1px;">60:00</div>
+                    <div style="font-size: 1rem; color: var(--text-muted); font-weight: 500;"><span id="attempted-count">0</span> / <span id="total-qs-count">100</span></div>
+                    <button class="btn-primary" style="width: auto; padding: 10px 20px; font-size: 0.95rem; background: var(--accent);" onclick="submitExam()">SUBMIT</button>
+                </div>
+                <div class="section-tabs" id="exam-section-tabs"></div>
+            </div>
+            <div id="omr-sheet-container" style="padding-bottom: 30px;"></div>
+        </section>
+
+        <section id="answer-key-view" class="view-section">
+            <div class="sticky-header flex-between">
+                <h2 style="font-size: 1.2rem; margin:0; border:none;">Answer Key</h2>
+                <button class="btn-primary" style="width: auto; padding: 10px 20px; background: var(--accent); color: white; font-size: 0.95rem;" onclick="evaluateExam()">SAVE & SCORE</button>
+            </div>
+            <p style="color: var(--warning); margin-bottom: 20px; font-size: 0.95rem;">Enter the correct options from your solution PDF below.</p>
+            <div class="section-tabs" id="ans-section-tabs"></div>
+            <div id="answer-key-container" style="padding-bottom: 30px;"></div>
+        </section>
+
+        <section id="report-view" class="view-section">
+            <div class="report-card">
+                <h2 id="report-title" style="text-align: center; border: none; font-size: 1.3rem; font-weight: 700; text-transform: uppercase; margin-bottom:15px; color:#111;">EXAM REPORT</h2>
+                <hr style="border-top: 1px solid #eaeaea; margin-bottom: 25px;">
+                
+                <div class="report-grid">
+                    <div><span style="color:#666;">Questions:</span> <span id="rep-qs" style="font-weight:600;">0</span></div>
+                    <div><span style="color:#666;">Marks:</span> <span id="rep-marks" style="font-weight:600;">0</span></div>
+                    <div><span style="color:#666;">Correct:</span> <span id="rep-corr" style="font-weight:600; color:var(--accent);">0</span></div>
+                    <div><span style="color:#666;">Total Marks:</span> <span id="rep-total" style="font-weight:600;">0</span></div>
+                    <div><span style="color:#666;">Wrong:</span> <span id="rep-wrong" style="font-weight:600; color:var(--danger);">0</span></div>
+                    <div><span style="color:#666;">Accuracy:</span> <span id="rep-acc" style="font-weight:600;">0</span></div>
+                    <div><span style="color:#666;">Not Attempted:</span> <span id="rep-na" style="font-weight:600;">0</span></div>
+                    <div><span style="color:#666;">Duration:</span> <span id="rep-time" style="font-weight:600;">00:00:00</span></div>
+                </div>
+
+                <div style="text-align: center; font-size: 0.85rem; font-weight: 600; color: #999; border-bottom: 1px solid #eaeaea; line-height: 0.1em; margin: 40px 0 30px;">
+                    <span style="background:#fff; padding:0 15px;">OMR - Section Breakdown</span>
+                </div>
+
+                <div id="report-omr-breakdown" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin-bottom: 35px;">
+                    </div>
+
+                <div style="font-size: 0.9rem; color: #444; margin-top: 30px; border-top: 1px solid #eaeaea; padding-top: 20px; background: #fafafa; padding: 15px; border-radius: 8px;">
+                    <strong style="color:#222;">How to cross check answers?</strong>
+                    <ul style="margin-left: 20px; margin-top: 10px; line-height: 1.8;">
+                        <li>Serial No. with <span style="color: var(--danger); font-weight:600;">red</span> is marked for review.</li>
+                        <li><span style="color: var(--accent); font-weight:600;">Green bubble</span> is the correct chosen option.</li>
+                        <li><span style="color: var(--danger); font-weight:600;">Red bubble</span> is the incorrect chosen option.</li>
+                        <li><span style="color: var(--missed); font-weight:600;">Grey bubble</span> is the correct option but not chosen.</li>
+                    </ul>
+                </div>
+                
+                <button class="btn-primary" style="margin-top: 30px; background: #111; padding: 16px; font-size: 1.05rem;" onclick="switchTab('result-view')">VIEW ANALYTICS DASHBOARD</button>
+            </div>
+        </section>
+
+        <section id="result-view" class="view-section">
+            <div class="card" style="display: flex; flex-direction: column; align-items: center; padding: 40px 20px;">
+                <div style="width: 220px; height: 220px; position: relative;">
+                    <canvas id="donutChart"></canvas>
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                        <span id="donut-center-score" style="font-size: 2rem; font-weight: bold; color: var(--text-main);">0</span><br>
+                        <span style="font-size: 0.85rem; color: var(--text-muted);">Total Score</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="kpi-grid">
+                <div class="kpi-box">
+                    <div class="kpi-val" id="res-percent">0%</div>
+                    <div class="kpi-label">Overall %</div>
+                </div>
+                <div class="kpi-box">
+                    <div class="kpi-val" id="res-acc">0%</div>
+                    <div class="kpi-label">Accuracy</div>
+                </div>
+                <div class="kpi-box">
+                    <div class="kpi-val" id="res-timeq">0s</div>
+                    <div class="kpi-label">Avg Time/Q</div>
+                </div>
+            </div>
+            
+            <div class="card" style="margin-top: 25px;">
+                <h3 style="margin-bottom: 15px; border:none; padding:0;">Time Spent Per Section</h3>
+                <div id="res-section-times" style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
+                    </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // ==========================================
+// FIREBASE REAL-TIME SYNC
+// ==========================================
+const firebaseConfig = { apiKey: "AIzaSyCPB7zv_lI5YcJ59DcFCF6rT25nj6lWHy8", authDomain: "studybuddy-f1cfa.firebaseapp.com", projectId: "studybuddy-f1cfa", storageBucket: "studybuddy-f1cfa.firebasestorage.app", messagingSenderId: "1086444958128", appId: "1:1086444958128:web:a636bf2dbb4f0804872675" };
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+db.enablePersistence().catch(function(err) { console.log("Offline mode failed to enable", err); });
+
+// The specific document where all your data will live
+const myDocRef = db.collection('bankquest_users').doc('my_personal_data');
+
+let appData = { tasks: {}, mocks: [] };
+
+// Listen for real-time changes (Syncs laptop and mobile instantly)
+myDocRef.onSnapshot((doc) => {
+    if (doc.exists) {
+        appData = doc.data();
+        renderTracker();
+        renderAnalyticsHome();
+    } else {
+        // First time ever opening the app, generate plan and save to cloud
+        generate60DayPlan();
+    }
+});
+
+function saveData() {
+    // Push the updated appData to the cloud
+    myDocRef.set(appData).catch(error => {
+        console.error("Error saving to cloud: ", error);
+        alert("Failed to save data. Check your internet connection.");
+    });
+}
+
+        // ==========================================
+        // 60-DAY PROGRESSIVE PLAN GENERATOR (OPTIMIZED)
+        // ==========================================
+        if (Object.keys(appData.tasks).length === 0) {
+            generate60DayPlan();
+        }
+
+        function generate60DayPlan() {
+            // 51 Working days (60 days minus 9 Sundays). Topics are stretched for ~3 hours of pacing.
+            const mathTopics = [
+                // Week 1-2: Speed Math & Basics
+                "Vedic Math", "Vedic Math", "Vedic Math", 
+                "Simplification", "Simplification", "Simplification", "Simplification", 
+                "Approximation", "Approximation", 
+                "Number Series", "Number Series", "Number Series", "Number Series",
+                // Week 3-4: Roots & Core Arithmetic
+                "Quadratic Eq", "Quadratic Eq", "Quadratic Eq", 
+                "Percentages", "Percentages", "Percentages", "Percentages", 
+                "Ratio & Prop", "Ratio & Prop", "Ratio & Prop", 
+                // Week 5-6: Heavy Arithmetic
+                "Average & Ages", "Average & Ages", "Average & Ages", 
+                "Profit & Loss", "Profit & Loss", "Profit & Loss", "Profit & Loss", 
+                "Time & Work", "Time & Work", "Time & Work", "Time & Work", 
+                // Week 7-8: Adv Arithmetic & Data Interpretation
+                "Speed & Dist", "Speed & Dist", "Speed & Dist", 
+                "SI & CI", "SI & CI", "SI & CI", 
+                "DI Basics (Tabular/Pie)", "DI Basics (Tabular/Pie)", "DI Basics (Tabular/Pie)", 
+                "DI Adv (Line/Bar)", "DI Adv (Line/Bar)", "DI Adv (Line/Bar)", 
+                "Caselet DI", "Caselet DI", "Caselet DI", "Arithmetic Rev", "Quant Sectional"
+            ];
+
+            const reasTopics = [
+                // Week 1-2: Misc Topics (Practice focused, minimal video)
+                "Alpha Series (Practice)", "Alpha Series (Practice)", "Alpha Series (Practice)", 
+                "Inequalities (V+P)", "Inequalities (Practice)", "Inequalities (Practice)", 
+                "Direction Sense (V+P)", "Direction Sense (Practice)", 
+                "Blood Relation (V+P)", "Blood Relation (Practice)", 
+                "Syllogism (V+P)", "Syllogism (Practice)", "Syllogism Adv (Practice)", "Syllogism Adv (Practice)",
+                // Week 3-4: Coding & Basic Seating
+                "Coding-Dec (V+P)", "Coding-Dec (Practice)", "Coding-Dec (Practice)", 
+                "Order & Rank (V+P)", "Order & Rank (Practice)", 
+                "Linear Seating (V+P)", "Linear Seating (Practice)", "Linear Seating (Practice)", 
+                "Circular Seating (V+P)", "Circular Seating (Practice)", "Circular Seating (Practice)", 
+                // Week 5-6: Puzzles & Adv Seating
+                "Square/Rect Seating (Practice)", "Square/Rect Seating (Practice)", 
+                "Floor Puzzles (V+P)", "Floor Puzzles (Practice)", "Floor Puzzles (Practice)", 
+                "Box Puzzles (V+P)", "Box Puzzles (Practice)", "Box Puzzles (Practice)", 
+                "Date/Month Puzzles (Practice)", "Date/Month Puzzles (Practice)", 
+                // Week 7-8: High Level Mix
+                "Data Sufficiency (V+P)", "Data Sufficiency (Practice)", "Data Sufficiency (Practice)", 
+                "Mix Seating (Practice)", "Mix Seating (Practice)", "Mix Seating (Practice)", 
+                "Mix Puzzles (Practice)", "Mix Puzzles (Practice)", "Mix Puzzles (Practice)", 
+                "High Level Reas (Practice)", "High Level Reas (Practice)", "High Level Reas (Practice)", 
+                "Logic Reas (Practice)", "Reas Sectional", "Reas Sectional"
+            ];
+
+            const engTopics = [
+                // Week 1-2: Core Grammar
+                "Nouns & Pronouns", "Nouns & Pronouns", "Nouns & Pronouns", 
+                "Verbs & Tenses", "Verbs & Tenses", "Verbs & Tenses", 
+                "Sub-Verb Agr", "Sub-Verb Agr", "Sub-Verb Agr", 
+                "Adj & Adv", "Adj & Adv", "Adj & Adv", 
+                "Prepositions", "Prepositions",
+                // Week 3-4: Reading Comprehension & Cloze
+                "RC Basics", "RC Basics", "RC Basics", 
+                "RC Practice", "RC Practice", "RC Practice", "RC Practice", 
+                "Cloze Test Basics", "Cloze Test Basics", "Cloze Test Practice", "Cloze Test Practice", 
+                // Week 5-6: Jumbles & Errors
+                "Para Jumbles Basics", "Para Jumbles Practice", "Para Jumbles Practice", "Para Jumbles Practice", 
+                "Error Spotting", "Error Spotting", "Error Spotting", "Error Spotting", 
+                "Phrase Repl", "Phrase Repl", "Phrase Repl",
+                // Week 7-8: Mix Practice
+                "Phrase Repl Practice", "Phrase Repl Practice", 
+                "Fillers/Match Col", "Fillers/Match Col", "Fillers/Match Col", 
+                "Mix Grammar Practice", "Mix Grammar Practice", "Mix Grammar Practice", 
+                "Mix RC Practice", "Mix RC Practice", "Mix RC Practice", 
+                "Eng Sectional", "Eng Sectional", "Eng Sectional"
+            ];
+            
+            let workingDayCount = 0;
+            for(let i=0; i<60; i++) {
+                const d = new Date(todayReal);
+                d.setDate(d.getDate() + i);
+                const dateStr = d.toISOString().split('T')[0];
+                const dayOfWeek = d.getDay(); // 0 is Sunday, 3 is Wed, 6 is Sat
+                let dailyTasks = [];
+
+                if (dayOfWeek === 0) { 
+                    // Sundays: Mock + Catch-up Day
+                    dailyTasks = [
+                        { id: Date.now() + Math.random(), text: "[10:00 AM] Mock: Full Prelims Test", done: false },
+                        { id: Date.now() + Math.random(), text: "[12:00 PM] Analyze Mock OR Catch-up Uncompleted Tasks", done: false }
+                    ];
+                } else {
+                    const mTopic = mathTopics[workingDayCount] || "Mixed Math Rev";
+                    const rTopic = reasTopics[workingDayCount] || "Mixed Reas Rev";
+                    const eTopic = engTopics[workingDayCount] || "Mixed Eng Rev";
+
+                    // Quant & Eng explicitly tagged with (Video + Practice)
+                    dailyTasks.push({ id: Date.now()+Math.random(), text: `[10:00 AM] Quant: ${mTopic} (V + P)`, done: false });
+                    dailyTasks.push({ id: Date.now()+Math.random(), text: `[02:00 PM] Reasoning: ${rTopic}`, done: false });
+                    dailyTasks.push({ id: Date.now()+Math.random(), text: `[04:00 PM] English: ${eTopic} (V + P)`, done: false });
+                    
+                    // GK/CA twice a week (Wednesdays and Saturdays)
+                    if (dayOfWeek === 3 || dayOfWeek === 6) {
+                        dailyTasks.push({ id: Date.now()+Math.random(), text: `[09:00 PM] GK/CA: Bi-weekly Revision (V + Notes)`, done: false });
+                    }
+                    workingDayCount++;
+                }
+                appData.tasks[dateStr] = dailyTasks;
+            }
+            saveData();
+        }
+        // ==========================================
+        // DAILY TRACKER LOGIC
+        // ==========================================
+        let currentWeekOffset = 0;
+        let selectedDateStr = todayStr;
+
+        function formatTaskText(text) {
+            if (text.startsWith('[')) {
+                const closeIndex = text.indexOf(']');
+                if (closeIndex !== -1) {
+                    const timePart = text.substring(0, closeIndex + 1);
+                    const contentPart = text.substring(closeIndex + 1);
+                    return `<div style="display:flex; flex-direction:column;"><span class="task-time">${timePart}</span> <span>${contentPart}</span></div>`;
+                }
+            }
+            return text;
+        }
+
+        function renderTracker() {
+            const calendarEl = document.getElementById('calendar-days');
+            calendarEl.innerHTML = '';
+            
+            const baseDate = new Date();
+            baseDate.setDate(baseDate.getDate() + (currentWeekOffset * 7));
+            const day = baseDate.getDay();
+            const diff = baseDate.getDate() - day + (day == 0 ? -6 : 1);
+            const startOfWeek = new Date(baseDate.setDate(diff));
+
+            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+            document.getElementById('month-year-label').innerText = `${monthNames[startOfWeek.getMonth()]} ${startOfWeek.getFullYear()}`;
+
+            for (let i = 0; i < 7; i++) {
+                const currentDay = new Date(startOfWeek);
+                currentDay.setDate(startOfWeek.getDate() + i);
+                const offset = currentDay.getTimezoneOffset();
+                const d = new Date(currentDay.getTime() - (offset*60*1000));
+                const dateStr = d.toISOString().split('T')[0];
+
+                const tasksForDay = appData.tasks[dateStr] || [];
+                let classes = `day-box ${dateStr === selectedDateStr ? 'active' : ''}`;
+                if (tasksForDay.length > 0 && tasksForDay.some(t => !t.done)) classes += ' has-tasks';
+
+                const dayBox = document.createElement('div');
+                dayBox.className = classes;
+                dayBox.innerHTML = `<div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">${dayNames[i]}</div><div style="font-weight:700; font-size: 1.15rem; color:var(--text-main);">${currentDay.getDate()}</div>`;
+                
+                dayBox.onclick = () => { selectedDateStr = dateStr; renderTracker(); };
+                calendarEl.appendChild(dayBox);
+            }
+
+            const listEl = document.getElementById('task-list');
+            listEl.innerHTML = '';
+            const tasks = appData.tasks[selectedDateStr] || [];
+            
+            if(tasks.length === 0) {
+                listEl.innerHTML = '<p style="color:var(--text-muted); font-size:0.95rem;">No tasks scheduled. Rest up!</p>';
+            } else {
+                tasks.forEach(task => {
+                    listEl.innerHTML += `
+                        <div class="task-item ${task.done ? 'done' : ''}" onclick="toggleTask('${selectedDateStr}', ${task.id})">
+                            <input type="checkbox" class="task-checkbox" ${task.done ? 'checked' : ''} onclick="event.stopPropagation(); toggleTask('${selectedDateStr}', ${task.id})">
+                            <div class="task-text">${formatTaskText(task.text)}</div>
+                        </div>
+                    `;
+                });
+            }
+        }
+        function resetApp() {
+    if(confirm("Wipe all data and restart the 60-day plan?")) {
+        localStorage.removeItem('bankQuestMobile');
+        appData = { tasks: {}, mocks: [] }; // Clear memory
+        generate60DayPlan(); // Build fresh plan
+        renderTracker();
+        renderAnalyticsHome();
+        alert("App completely reset!");
+    }
+}
+        function changeWeek(offset) { currentWeekOffset += offset; renderTracker(); }
+        
+        function toggleTask(dateStr, taskId) {
+            const task = appData.tasks[dateStr].find(t => t.id === taskId);
+            if(task) { task.done = !task.done; saveData(); renderTracker(); }
+        }
+
+        // ==========================================
+        // MOCK EXAM ENGINE LOGIC
+        // ==========================================
+        let currentExam = {};
+        let userAnswers = {}; 
+        let actualAnswers = {}; 
+        let reviewStatus = {};
+        let examTimerInterval;
+        let timeRemainingSec = 0;
+        let currentActiveSection = '';
+        let sectionTimes = {};
+        const letters = ['A', 'B', 'C', 'D', 'E'];
+
+        function addSubjectRow() {
+            const container = document.getElementById('dynamic-subjects-container');
+            const div = document.createElement('div');
+            div.className = 'subject-row';
+            div.innerHTML = `
+                <input type="text" class="sub-name" placeholder="Subject Name">
+                <input type="number" class="sub-qs" value="20" inputmode="numeric">
+                <button class="delete-btn" onclick="this.parentElement.remove()" title="Remove Subject">&times;</button>
+            `;
+            container.appendChild(div);
+        }
+
+        function startExam() {
+            let sectionsData = {};
+            document.querySelectorAll('.subject-row').forEach(row => {
+                const name = row.querySelector('.sub-name').value.trim();
+                const qs = parseInt(row.querySelector('.sub-qs').value) || 0;
+                if (name && qs > 0) sectionsData[name] = qs;
+            });
+
+            currentExam = {
+                title: document.getElementById('setup-title').value.trim() || 'Mock Test',
+                sections: sectionsData,
+                opts: parseInt(document.getElementById('setup-opts').value),
+                correctMarks: parseFloat(document.getElementById('setup-correct').value),
+                wrongMarks: parseFloat(document.getElementById('setup-wrong').value),
+                durationMin: parseInt(document.getElementById('setup-time').value)
+            };
+
+            currentExam.totalQs = Object.values(currentExam.sections).reduce((a, b) => a + b, 0);
+            if (currentExam.totalQs === 0) { alert("Add questions to at least one section."); return; }
+
+            userAnswers = {}; actualAnswers = {}; reviewStatus = {}; sectionTimes = {};
+            currentActiveSection = Object.keys(currentExam.sections)[0];
+            
+            document.getElementById('total-qs-count').innerText = currentExam.totalQs;
+            document.getElementById('attempted-count').innerText = 0;
+
+            generateOMRUI('active-exam-view', false);
+            
+            timeRemainingSec = currentExam.durationMin * 60;
+            clearInterval(examTimerInterval);
+            examTimerInterval = setInterval(timerTick, 1000);
+
+            switchTab('active-exam-view');
+        }
+
+        function timerTick() {
+            if(timeRemainingSec > 0) {
+                timeRemainingSec--;
+                if (sectionTimes[currentActiveSection] === undefined) sectionTimes[currentActiveSection] = 0;
+                sectionTimes[currentActiveSection]++;
+                
+                const m = Math.floor(timeRemainingSec / 60).toString().padStart(2, '0');
+                const s = (timeRemainingSec % 60).toString().padStart(2, '0');
+                document.getElementById('exam-timer').innerText = `${m}:${s}`;
+            } else {
+                submitExam();
+            }
+        }
+
+        function generateOMRUI(viewId, isAnswerKey) {
+            const tabsContainer = document.getElementById(isAnswerKey ? 'ans-section-tabs' : 'exam-section-tabs');
+            const sheetsContainer = document.getElementById(isAnswerKey ? 'answer-key-container' : 'omr-sheet-container');
+            
+            tabsContainer.innerHTML = ''; sheetsContainer.innerHTML = '';
+
+            for (const [secName, qCount] of Object.entries(currentExam.sections)) {
+                if (qCount > 0) {
+                    if (sectionTimes[secName] === undefined) sectionTimes[secName] = 0;
+
+                    // Tab Setup
+                    const tab = document.createElement('div');
+                    tab.className = `sec-tab ${secName === currentActiveSection ? 'active' : ''}`;
+                    tab.innerText = secName;
+                    tab.onclick = () => {
+                        currentActiveSection = secName;
+                        Array.from(tabsContainer.children).forEach(c => c.classList.remove('active'));
+                        tab.classList.add('active');
+                        Array.from(sheetsContainer.children).forEach(c => c.classList.remove('active'));
+                        document.getElementById(`sec-container-${isAnswerKey ? 'ans' : 'usr'}-${secName}`).classList.add('active');
+                    };
+                    tabsContainer.appendChild(tab);
+
+                    // Sheet Container Setup
+                    const secContainer = document.createElement('div');
+                    secContainer.id = `sec-container-${isAnswerKey ? 'ans' : 'usr'}-${secName}`;
+                    secContainer.className = `omr-sec-container ${secName === currentActiveSection ? 'active' : ''}`;
+                    
+                    for (let qNum = 1; qNum <= qCount; qNum++) {
+                        const qId = `${secName}-${qNum}`;
+                        const row = document.createElement('div');
+                        row.className = 'omr-q-row';
+                        
+                        row.innerHTML = `
+                            <div class="q-num" style="${isAnswerKey ? 'width: 35px;' : 'width: 45px;'}">${qNum}.</div>
+                            ${!isAnswerKey ? `<div class="q-icon ${reviewStatus[qId] ? 'review-active' : ''}" onclick="toggleReview('${qId}', this)" title="Mark for Review">👁</div>` : ''}
+                            <div class="bubbles-container" id="${isAnswerKey ? 'ans' : 'usr'}-${qId}"></div>
+                        `;
+                        
+                        const bubbleContainer = row.querySelector('.bubbles-container');
+                        for(let j = 0; j < currentExam.opts; j++) {
+                            const bubble = document.createElement('div');
+                            bubble.className = 'bubble';
+                            bubble.innerText = letters[j]; 
+                            bubble.onclick = () => handleBubbleClick(qId, letters[j], isAnswerKey, bubbleContainer);
+                            bubbleContainer.appendChild(bubble);
+                        }
+                        secContainer.appendChild(row);
+                    }
+                    sheetsContainer.appendChild(secContainer);
+                }
+            }
+        }
+
+        function toggleReview(qId, element) {
+            reviewStatus[qId] = !reviewStatus[qId];
+            if (reviewStatus[qId]) element.classList.add('review-active');
+            else element.classList.remove('review-active');
+        }
+
+        function handleBubbleClick(qId, val, isAnswerKey, container) {
+            Array.from(container.children).forEach(b => b.classList.remove('selected'));
+            event.target.classList.add('selected');
+
+            if(isAnswerKey) {
+                actualAnswers[qId] = val;
+            } else {
+                userAnswers[qId] = val;
+                document.getElementById('attempted-count').innerText = Object.keys(userAnswers).length;
+            }
+        }
+
+        function submitExam() {
+            clearInterval(examTimerInterval);
+            actualAnswers = {}; 
+            currentActiveSection = Object.keys(currentExam.sections)[0];
+            generateOMRUI('answer-key-view', true);
+            switchTab('answer-key-view');
+        }
+
+        function evaluateExam() {
+            let correct = 0, wrong = 0;
+            let attempted = Object.keys(userAnswers).length;
+
+            for (let qId in userAnswers) {
+                if (userAnswers[qId] === actualAnswers[qId]) correct++;
+                else if (actualAnswers[qId] !== undefined) wrong++; 
+            }
+
+            const notAttempted = currentExam.totalQs - attempted;
+            const score = (correct * currentExam.correctMarks) - (wrong * currentExam.wrongMarks);
+            const maxScore = currentExam.totalQs * currentExam.correctMarks;
+            const accuracy = attempted === 0 ? 0 : (correct / attempted) * 100;
+            
+            const totalTimeSpent = (currentExam.durationMin * 60) - timeRemainingSec;
+            const avgTimePerQ = attempted === 0 ? 0 : totalTimeSpent / attempted;
+
+            const mockResult = {
+                id: Date.now(),
+                title: currentExam.title,
+                date: new Date().toLocaleDateString(),
+                correct: correct,
+                wrong: wrong,
+                notAttempted: notAttempted,
+                score: parseFloat(score.toFixed(2)),
+                maxScore: maxScore,
+                accuracy: parseFloat(accuracy.toFixed(1)),
+                percentage: parseFloat(((score / maxScore) * 100).toFixed(1)),
+                timePerQ: Math.round(avgTimePerQ),
+                sectionTimes: sectionTimes,
+                totalTimeSpent: totalTimeSpent
+            };
+
+            appData.mocks.push(mockResult);
+            saveData();
+            
+            renderReport(mockResult);
+            renderResultDashboard(mockResult); 
+            switchTab('report-view');
+        }
+
+        // ==========================================
+        // REPORT & DASHBOARDS
+        // ==========================================
+        let mainChart, donutChartVar;
+
+        function renderReport(result) {
+            document.getElementById('report-title').innerText = result.title;
+            document.getElementById('rep-qs').innerText = currentExam.totalQs;
+            document.getElementById('rep-marks').innerText = result.score;
+            document.getElementById('rep-corr').innerText = result.correct;
+            document.getElementById('rep-total').innerText = result.maxScore;
+            document.getElementById('rep-wrong').innerText = result.wrong;
+            document.getElementById('rep-acc').innerText = result.accuracy + '%';
+            document.getElementById('rep-na').innerText = result.notAttempted;
+            
+            const h = Math.floor(result.totalTimeSpent / 3600).toString().padStart(2, '0');
+            const m = Math.floor((result.totalTimeSpent % 3600) / 60).toString().padStart(2, '0');
+            const s = (result.totalTimeSpent % 60).toString().padStart(2, '0');
+            document.getElementById('rep-time').innerText = `${h}:${m}:${s}`;
+
+            const breakdownContainer = document.getElementById('report-omr-breakdown');
+            breakdownContainer.innerHTML = '';
+
+            for (const [secName, qCount] of Object.entries(currentExam.sections)) {
+                if(qCount > 0) {
+                    breakdownContainer.innerHTML += `<div style="grid-column: 1 / -1; font-weight: 700; margin-top: 15px; font-size:1.05rem; border-bottom: 1px solid #eaeaea; padding-bottom: 8px; color: #111;">${secName}</div>`;
+                    
+                    for (let qNum = 1; qNum <= qCount; qNum++) {
+                        const qId = `${secName}-${qNum}`;
+                        const userAns = userAnswers[qId];
+                        const actualAns = actualAnswers[qId];
+                        const isReview = reviewStatus[qId];
+
+                        let bubblesHtml = '';
+                        for(let j = 0; j < currentExam.opts; j++) {
+                            const opt = letters[j];
+                            let bClass = 'report-bubble';
+                            
+                            if (userAns === opt && userAns === actualAns) bClass += ' correct';
+                            else if (userAns === opt && userAns !== actualAns) bClass += ' wrong';
+                            else if (userAns !== opt && actualAns === opt) bClass += ' missed';
+
+                            bubblesHtml += `<div class="${bClass}">${j+1}</div>`; 
+                        }
+
+                        breakdownContainer.innerHTML += `
+                            <div style="display: flex; align-items: center; justify-content: flex-start; gap: 5px;">
+                                <span class="report-q-num ${isReview ? 'review' : ''}">${qNum}.</span>
+                                ${bubblesHtml}
+                            </div>
+                        `;
+                    }
+                }
+            }
+        }
+
+        function formatTime(secs) { return `${Math.floor(secs/60)}m ${secs%60}s`; }
+
+        function renderResultDashboard(result) {
+            document.getElementById('donut-center-score').innerText = result.score;
+            document.getElementById('res-percent').innerText = `${result.percentage}%`;
+            document.getElementById('res-acc').innerText = `${result.accuracy}%`;
+            document.getElementById('res-timeq').innerText = `${result.timePerQ}s`;
+
+            const secTimesContainer = document.getElementById('res-section-times');
+            secTimesContainer.innerHTML = '';
+            for (const [sec, time] of Object.entries(result.sectionTimes)) {
+                if (time > 0) {
+                    secTimesContainer.innerHTML += `<div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border-color); font-size:0.95rem;"><strong>${sec}</strong> <span style="color: var(--primary); font-weight:600;">${formatTime(time)}</span></div>`;
+                }
+            }
+
+            if(donutChartVar) donutChartVar.destroy();
+            const ctx = document.getElementById('donutChart').getContext('2d');
+            donutChartVar = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Correct', 'Wrong', 'Not Attempted'],
+                    datasets: [{
+                        data: [result.correct, result.wrong, result.notAttempted],
+                        backgroundColor: ['#10b981', '#ef4444', '#71717a'], borderWidth: 0
+                    }]
+                },
+                options: { cutout: '75%', plugins: { legend: { display: false } }, maintainAspectRatio: false }
+            });
+        }
+
+        function deleteMock(id) {
+            if(confirm("Delete this exam record?")) {
+                appData.mocks = appData.mocks.filter(m => m.id !== id);
+                saveData(); renderAnalyticsHome();
+            }
+        }
+
+        function renderAnalyticsHome() {
+            const listEl = document.getElementById('recent-exams-list');
+            listEl.innerHTML = '';
+            
+            if (appData.mocks.length === 0) {
+                listEl.innerHTML = '<p style="color: var(--text-muted); padding: 10px 0;">No exams taken yet.</p>';
+            } else {
+                [...appData.mocks].reverse().forEach(m => {
+                    listEl.innerHTML += `
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 0; border-bottom:1px solid var(--border-color);">
+                            <div style="flex:1;">
+                                <strong style="font-size:1.05rem;">${m.title}</strong> 
+                                <div style="color:var(--text-muted); font-size:0.85rem; margin-top:6px;">${m.date} • ${m.accuracy}% Acc</div>
+                            </div>
+                            <div style="display:flex; align-items:center; gap: 15px;">
+                                <div style="color: var(--accent); font-weight:700; font-size:1.15rem;">${m.score}</div>
+                                <button onclick="deleteMock(${m.id})" style="background:var(--bg-elevated); border:1px solid var(--border-color); color:var(--danger); cursor:pointer; font-size:1.1rem; padding:8px 12px; border-radius:8px; transition:0.2s;" title="Delete">🗑</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            const labels = appData.mocks.map((_, i) => `Mock ${i+1}`);
+            const dataAcc = appData.mocks.map(m => m.accuracy);
+            
+            const tooltips = appData.mocks.map(m => {
+                let str = "";
+                for(const [sec, time] of Object.entries(m.sectionTimes)) {
+                    if (time > 0) str += `${sec.substring(0,3)}: ${Math.floor(time/60)}m `;
+                }
+                return str;
+            });
+
+            if(mainChart) mainChart.destroy();
+            const ctx = document.getElementById('mainTrendChart').getContext('2d');
+            mainChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Accuracy %', data: dataAcc, borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 3,
+                        pointBackgroundColor: '#ef4444', pointRadius: 4, fill: true, tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, max: 100, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } },
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { afterLabel: function(ctx) { return tooltips[ctx.dataIndex]; } } } }
+                }
+            });
+        }
+
+        // ==========================================
+        // NAVIGATION INIT
+        // ==========================================
+        function switchTab(tabId) {
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            if(event && event.currentTarget.classList.contains('nav-btn')) event.currentTarget.classList.add('active');
+            
+            document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            
+            if(tabId === 'analytics-home') renderAnalyticsHome();
+            if(tabId === 'tracker-view') renderTracker();
+            window.scrollTo(0, 0); 
+        }
+
+        // Boot
+        renderTracker();
+        renderAnalyticsHome();
+    </script>
+</body>
+</html>
