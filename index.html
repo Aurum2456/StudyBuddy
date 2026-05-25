@@ -6,7 +6,7 @@
     <title>StudyBuddy</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -221,7 +221,8 @@
                     <div class="subject-row">
                         <input type="text" class="sub-name" value="English" placeholder="Subject Name">
                         <input type="number" class="sub-qs" value="30" inputmode="numeric">
-                        <div style="width:30px;"></div> </div>
+                        <div style="width:30px;"></div> 
+                    </div>
                     <div class="subject-row">
                         <input type="text" class="sub-name" value="Quant" placeholder="Subject Name">
                         <input type="number" class="sub-qs" value="35" inputmode="numeric">
@@ -342,64 +343,86 @@
 
     <script>
         // ==========================================
-// FIREBASE REAL-TIME SYNC
-// ==========================================
-const firebaseConfig = { apiKey: "AIzaSyCPB7zv_lI5YcJ59DcFCF6rT25nj6lWHy8", authDomain: "studybuddy-f1cfa.firebaseapp.com", projectId: "studybuddy-f1cfa", storageBucket: "studybuddy-f1cfa.firebasestorage.app", messagingSenderId: "1086444958128", appId: "1:1086444958128:web:a636bf2dbb4f0804872675" };
-
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-db.enablePersistence().catch(function(err) { console.log("Offline mode failed to enable", err); });
-
-// The specific document where all your data will live
-const myDocRef = db.collection('bankquest_users').doc('my_personal_data');
-
-let appData = { tasks: {}, mocks: [] };
-
-// Listen for real-time changes (Syncs laptop and mobile instantly)
-myDocRef.onSnapshot((doc) => {
-    if (doc.exists) {
-        appData = doc.data();
-        renderTracker();
-        renderAnalyticsHome();
-    } else {
-        // First time ever opening the app, generate plan and save to cloud
-        generate60DayPlan();
-    }
-});
-
-function saveData() {
-    // Push the updated appData to the cloud
-    myDocRef.set(appData).catch(error => {
-        console.error("Error saving to cloud: ", error);
-        alert("Failed to save data. Check your internet connection.");
-    });
-}
-
+        // ROBUST FIREBASE & LOCAL STATE INIT
         // ==========================================
-        // 60-DAY PROGRESSIVE PLAN GENERATOR (OPTIMIZED)
-        // ==========================================
-        if (Object.keys(appData.tasks).length === 0) {
-            generate60DayPlan();
+        let appData = { tasks: {}, mocks: [] };
+        const LOCAL_KEY = "studybuddy_local_backup";
+
+        const firebaseConfig = { 
+            apiKey: "AIzaSyCPB7zv_lI5YcJ59DcFCF6rT25nj6lWHy8", 
+            authDomain: "studybuddy-f1cfa.firebaseapp.com", 
+            projectId: "studybuddy-f1cfa", 
+            storageBucket: "studybuddy-f1cfa.firebasestorage.app", 
+            messagingSenderId: "1086444958128", 
+            appId: "1:1086444958128:web:a636bf2dbb4f0804872675" 
+        };
+
+        // Initialize Firebase safely
+        try {
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.firestore();
+            const myDocRef = db.collection('bankquest_users').doc('my_personal_data');
+
+            // Listen for real-time changes
+            myDocRef.onSnapshot((doc) => {
+                if (doc.exists) {
+                    appData = doc.data();
+                } else {
+                    // First load -> Create Plan -> UI updates happen below
+                    if (Object.keys(appData.tasks).length === 0) {
+                        generate60DayPlan();
+                    }
+                }
+                // ALWAYS render UI after checking data
+                renderTracker();
+                renderAnalyticsHome();
+            }, (error) => {
+                console.error("Firebase Security Rule Blocked Sync:", error);
+                alert("Cloud Sync is paused. Running perfectly in Local Offline Mode.");
+                fallbackToLocal();
+            });
+        } catch (e) {
+            console.error("Firebase init failed", e);
+            fallbackToLocal();
         }
 
+        function fallbackToLocal() {
+            appData = JSON.parse(localStorage.getItem(LOCAL_KEY)) || { tasks: {}, mocks: [] };
+            if (Object.keys(appData.tasks).length === 0) generate60DayPlan();
+            renderTracker();
+            renderAnalyticsHome();
+        }
+
+        function saveData() {
+            // 1. Always save locally as a bulletproof backup
+            localStorage.setItem(LOCAL_KEY, JSON.stringify(appData));
+            
+            // 2. Try pushing to the cloud
+            try {
+                const db = firebase.firestore();
+                db.collection('bankquest_users').doc('my_personal_data')
+                  .set(appData).catch(err => console.log("Cloud sync delayed: ", err));
+            } catch (e) {} // Catch safely if offline
+        }
+
+        const todayReal = new Date();
+        const todayStr = todayReal.toISOString().split('T')[0];
+
+        // ==========================================
+        // 60-DAY PROGRESSIVE PLAN GENERATOR 
+        // ==========================================
         function generate60DayPlan() {
-            // 51 Working days (60 days minus 9 Sundays). Topics are stretched for ~3 hours of pacing.
             const mathTopics = [
-                // Week 1-2: Speed Math & Basics
                 "Vedic Math", "Vedic Math", "Vedic Math", 
                 "Simplification", "Simplification", "Simplification", "Simplification", 
                 "Approximation", "Approximation", 
                 "Number Series", "Number Series", "Number Series", "Number Series",
-                // Week 3-4: Roots & Core Arithmetic
                 "Quadratic Eq", "Quadratic Eq", "Quadratic Eq", 
                 "Percentages", "Percentages", "Percentages", "Percentages", 
                 "Ratio & Prop", "Ratio & Prop", "Ratio & Prop", 
-                // Week 5-6: Heavy Arithmetic
                 "Average & Ages", "Average & Ages", "Average & Ages", 
                 "Profit & Loss", "Profit & Loss", "Profit & Loss", "Profit & Loss", 
                 "Time & Work", "Time & Work", "Time & Work", "Time & Work", 
-                // Week 7-8: Adv Arithmetic & Data Interpretation
                 "Speed & Dist", "Speed & Dist", "Speed & Dist", 
                 "SI & CI", "SI & CI", "SI & CI", 
                 "DI Basics (Tabular/Pie)", "DI Basics (Tabular/Pie)", "DI Basics (Tabular/Pie)", 
@@ -408,23 +431,19 @@ function saveData() {
             ];
 
             const reasTopics = [
-                // Week 1-2: Misc Topics (Practice focused, minimal video)
                 "Alpha Series (Practice)", "Alpha Series (Practice)", "Alpha Series (Practice)", 
                 "Inequalities (V+P)", "Inequalities (Practice)", "Inequalities (Practice)", 
                 "Direction Sense (V+P)", "Direction Sense (Practice)", 
                 "Blood Relation (V+P)", "Blood Relation (Practice)", 
                 "Syllogism (V+P)", "Syllogism (Practice)", "Syllogism Adv (Practice)", "Syllogism Adv (Practice)",
-                // Week 3-4: Coding & Basic Seating
                 "Coding-Dec (V+P)", "Coding-Dec (Practice)", "Coding-Dec (Practice)", 
                 "Order & Rank (V+P)", "Order & Rank (Practice)", 
                 "Linear Seating (V+P)", "Linear Seating (Practice)", "Linear Seating (Practice)", 
                 "Circular Seating (V+P)", "Circular Seating (Practice)", "Circular Seating (Practice)", 
-                // Week 5-6: Puzzles & Adv Seating
                 "Square/Rect Seating (Practice)", "Square/Rect Seating (Practice)", 
                 "Floor Puzzles (V+P)", "Floor Puzzles (Practice)", "Floor Puzzles (Practice)", 
                 "Box Puzzles (V+P)", "Box Puzzles (Practice)", "Box Puzzles (Practice)", 
                 "Date/Month Puzzles (Practice)", "Date/Month Puzzles (Practice)", 
-                // Week 7-8: High Level Mix
                 "Data Sufficiency (V+P)", "Data Sufficiency (Practice)", "Data Sufficiency (Practice)", 
                 "Mix Seating (Practice)", "Mix Seating (Practice)", "Mix Seating (Practice)", 
                 "Mix Puzzles (Practice)", "Mix Puzzles (Practice)", "Mix Puzzles (Practice)", 
@@ -433,21 +452,17 @@ function saveData() {
             ];
 
             const engTopics = [
-                // Week 1-2: Core Grammar
                 "Nouns & Pronouns", "Nouns & Pronouns", "Nouns & Pronouns", 
                 "Verbs & Tenses", "Verbs & Tenses", "Verbs & Tenses", 
                 "Sub-Verb Agr", "Sub-Verb Agr", "Sub-Verb Agr", 
                 "Adj & Adv", "Adj & Adv", "Adj & Adv", 
                 "Prepositions", "Prepositions",
-                // Week 3-4: Reading Comprehension & Cloze
                 "RC Basics", "RC Basics", "RC Basics", 
                 "RC Practice", "RC Practice", "RC Practice", "RC Practice", 
                 "Cloze Test Basics", "Cloze Test Basics", "Cloze Test Practice", "Cloze Test Practice", 
-                // Week 5-6: Jumbles & Errors
                 "Para Jumbles Basics", "Para Jumbles Practice", "Para Jumbles Practice", "Para Jumbles Practice", 
                 "Error Spotting", "Error Spotting", "Error Spotting", "Error Spotting", 
                 "Phrase Repl", "Phrase Repl", "Phrase Repl",
-                // Week 7-8: Mix Practice
                 "Phrase Repl Practice", "Phrase Repl Practice", 
                 "Fillers/Match Col", "Fillers/Match Col", "Fillers/Match Col", 
                 "Mix Grammar Practice", "Mix Grammar Practice", "Mix Grammar Practice", 
@@ -460,11 +475,10 @@ function saveData() {
                 const d = new Date(todayReal);
                 d.setDate(d.getDate() + i);
                 const dateStr = d.toISOString().split('T')[0];
-                const dayOfWeek = d.getDay(); // 0 is Sunday, 3 is Wed, 6 is Sat
+                const dayOfWeek = d.getDay(); 
                 let dailyTasks = [];
 
                 if (dayOfWeek === 0) { 
-                    // Sundays: Mock + Catch-up Day
                     dailyTasks = [
                         { id: Date.now() + Math.random(), text: "[10:00 AM] Mock: Full Prelims Test", done: false },
                         { id: Date.now() + Math.random(), text: "[12:00 PM] Analyze Mock OR Catch-up Uncompleted Tasks", done: false }
@@ -474,12 +488,10 @@ function saveData() {
                     const rTopic = reasTopics[workingDayCount] || "Mixed Reas Rev";
                     const eTopic = engTopics[workingDayCount] || "Mixed Eng Rev";
 
-                    // Quant & Eng explicitly tagged with (Video + Practice)
                     dailyTasks.push({ id: Date.now()+Math.random(), text: `[10:00 AM] Quant: ${mTopic} (V + P)`, done: false });
                     dailyTasks.push({ id: Date.now()+Math.random(), text: `[02:00 PM] Reasoning: ${rTopic}`, done: false });
                     dailyTasks.push({ id: Date.now()+Math.random(), text: `[04:00 PM] English: ${eTopic} (V + P)`, done: false });
                     
-                    // GK/CA twice a week (Wednesdays and Saturdays)
                     if (dayOfWeek === 3 || dayOfWeek === 6) {
                         dailyTasks.push({ id: Date.now()+Math.random(), text: `[09:00 PM] GK/CA: Bi-weekly Revision (V + Notes)`, done: false });
                     }
@@ -489,6 +501,19 @@ function saveData() {
             }
             saveData();
         }
+
+        // Hard Reset Button Logic
+        function resetApp() {
+            if(confirm("Wipe all data and restart the 60-day plan?")) {
+                localStorage.removeItem(LOCAL_KEY);
+                appData = { tasks: {}, mocks: [] }; 
+                generate60DayPlan(); 
+                renderTracker();
+                renderAnalyticsHome();
+                alert("StudyBuddy has been completely reset!");
+            }
+        }
+
         // ==========================================
         // DAILY TRACKER LOGIC
         // ==========================================
@@ -558,16 +583,7 @@ function saveData() {
                 });
             }
         }
-        function resetApp() {
-    if(confirm("Wipe all data and restart the 60-day plan?")) {
-        localStorage.removeItem('bankQuestMobile');
-        appData = { tasks: {}, mocks: [] }; // Clear memory
-        generate60DayPlan(); // Build fresh plan
-        renderTracker();
-        renderAnalyticsHome();
-        alert("App completely reset!");
-    }
-}
+
         function changeWeek(offset) { currentWeekOffset += offset; renderTracker(); }
         
         function toggleTask(dateStr, taskId) {
@@ -659,7 +675,6 @@ function saveData() {
                 if (qCount > 0) {
                     if (sectionTimes[secName] === undefined) sectionTimes[secName] = 0;
 
-                    // Tab Setup
                     const tab = document.createElement('div');
                     tab.className = `sec-tab ${secName === currentActiveSection ? 'active' : ''}`;
                     tab.innerText = secName;
@@ -672,7 +687,6 @@ function saveData() {
                     };
                     tabsContainer.appendChild(tab);
 
-                    // Sheet Container Setup
                     const secContainer = document.createElement('div');
                     secContainer.id = `sec-container-${isAnswerKey ? 'ans' : 'usr'}-${secName}`;
                     secContainer.className = `omr-sec-container ${secName === currentActiveSection ? 'active' : ''}`;
@@ -932,10 +946,6 @@ function saveData() {
             if(tabId === 'tracker-view') renderTracker();
             window.scrollTo(0, 0); 
         }
-
-        // Boot
-        renderTracker();
-        renderAnalyticsHome();
     </script>
 </body>
 </html>
